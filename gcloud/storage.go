@@ -15,7 +15,7 @@ type Bucket struct {
 	ctx    context.Context
 }
 
-func (b *Bucket) GetFileFromGStorage(key string) []byte {
+func (b *Bucket) GetFile(key string) []byte {
 	buffer := bytes.NewBuffer([]byte{})
 
 	rc, err := b.Bucket.Object(key).NewReader(b.ctx)
@@ -35,7 +35,7 @@ func (b *Bucket) GetFileFromGStorage(key string) []byte {
 	return buffer.Bytes()
 }
 
-func (b *Bucket) UploadFileToGStorage(key string, contents []byte) {
+func (b *Bucket) UploadFile(key string, contents []byte) {
 	buf := bytes.NewReader(contents)
 
 	wc := b.Bucket.Object(key).NewWriter(b.ctx)
@@ -49,7 +49,7 @@ func (b *Bucket) UploadFileToGStorage(key string, contents []byte) {
 	}
 }
 
-func (b *Bucket) GetSignedUrl(key string, expiry int) string {
+func (b *Bucket) GetTemporaryUrl(key string, expiry int) string {
 	signOpts := s2.SignedURLOptions{
 		Scheme:  s2.SigningSchemeV4,
 		Method:  "GET",

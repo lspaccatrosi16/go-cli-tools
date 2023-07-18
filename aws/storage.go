@@ -3,7 +3,9 @@ package aws
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"log"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
@@ -13,6 +15,7 @@ import (
 type Bucket struct {
 	S3Client *s3.Client
 	Bucket   string
+	Config   aws.Config
 }
 
 const partMibs int64 = 10
@@ -55,8 +58,27 @@ func (b Bucket) GetFile(key string) []byte {
 	return buffer.Bytes()
 }
 
+func (b Bucket) GetTemporaryUrl(key string, expiry int) string {
+	presignClient := s3.NewPresignClient(b.S3Client)
+	presignedUrl, err := presignClient.PresignGetObject(context.TODO(), &s3.GetObjectInput{
+		Bucket: aws.String(b.Bucket),
+		Key:    aws.String(key),
+	}, s3.WithPresignExpires(time.Hour*time.Duration(expiry)))
+
+	if err != nil {
+		panic(err)
+	}
+
+	return presignedUrl.URL
+}
+
+func (b Bucket) GetObjectUrl(key string) string {
+	region := b.Config.Region
+	return fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", b.Bucket, region, key)
+}
+
 func NewBucket(sdkConfig aws.Config, bucketName string) Bucket {
 	s3Client := s3.NewFromConfig(sdkConfig)
-	bucket := Bucket{S3Client: s3Client, Bucket: bucketName}
+	bucket := Bucket{S3Client: s3Client, Bucket: bucketName, Config: sdkConfig}
 	return bucket
 }
