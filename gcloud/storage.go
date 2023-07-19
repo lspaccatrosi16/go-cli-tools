@@ -8,6 +8,7 @@ import (
 
 	s2 "cloud.google.com/go/storage"
 	s1 "firebase.google.com/go/storage"
+	"google.golang.org/api/iterator"
 )
 
 type Bucket struct {
@@ -47,6 +48,29 @@ func (b *Bucket) UploadFile(key string, contents []byte) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func (b *Bucket) ListKeys() []string {
+	keys := []string{}
+
+	result := b.Bucket.Objects(b.ctx, nil)
+
+	for {
+		object, err := result.Next()
+
+		if err == iterator.Done {
+			break
+		}
+
+		if err != nil {
+			panic(err)
+		}
+
+		keys = append(keys, object.Name)
+
+	}
+
+	return keys
 }
 
 func (b *Bucket) GetTemporaryUrl(key string, expiry int) string {

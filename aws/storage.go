@@ -58,6 +58,24 @@ func (b Bucket) GetFile(key string) []byte {
 	return buffer.Bytes()
 }
 
+func (b Bucket) ListKeys() []string {
+	keys := []string{}
+
+	result, err := b.S3Client.ListObjectsV2(context.TODO(), &s3.ListObjectsV2Input{
+		Bucket: aws.String(b.Bucket),
+	})
+
+	if err != nil {
+		panic(err)
+	}
+
+	for _, k := range result.Contents {
+		keys = append(keys, *k.Key)
+	}
+
+	return keys
+}
+
 func (b Bucket) GetTemporaryUrl(key string, expiry int) string {
 	presignClient := s3.NewPresignClient(b.S3Client)
 	presignedUrl, err := presignClient.PresignGetObject(context.TODO(), &s3.GetObjectInput{
