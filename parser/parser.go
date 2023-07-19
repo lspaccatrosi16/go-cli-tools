@@ -57,6 +57,7 @@ func isLetterOrPoint(ch byte) bool {
 }
 
 func ParseString(str string, data Object) (string, []error) {
+	fmt.Println("starting string parse")
 	newString := []byte{}
 
 	parseErrors := []error{}
@@ -100,6 +101,8 @@ func ParseString(str string, data Object) (string, []error) {
 		}
 
 	}
+
+	fmt.Println("finished parse")
 
 	return string(newString), parseErrors
 }
