@@ -13,12 +13,23 @@ import (
 //go:embed baseCredential.json
 var baseJson []byte
 
-func readCredentialFromFile(appName string) credential {
-	credPath := config.GetCredentialsPath(appName)
-	return config.ReadConfigFile[credential](credPath, baseJson)
+func readCredentialFromFile(appName string) (credential, error) {
+	credPath, err := config.GetCredentialsPath(appName)
+
+	if err != nil {
+		return *new(credential), err
+	}
+
+	cred, err := config.ReadConfigFile[credential](credPath, baseJson)
+
+	if err != nil {
+		return *new(credential), err
+	}
+
+	return cred, nil
 }
 
-func getNewCredentials(appName string) credential {
+func getNewCredentials(appName string) (credential, error) {
 	logger := logging.GetLogger()
 
 	logger.Log("User credentials needed")
@@ -30,10 +41,15 @@ func getNewCredentials(appName string) credential {
 
 	userCred := credential{Key: key, Secret: secret}
 
-	credPath := config.GetCredentialsPath(appName)
+	credPath, err := config.GetCredentialsPath(appName)
+
+	if err != nil {
+		return *new(credential), err
+	}
+
 	config.WriteConfigFile[credential](credPath, userCred)
 
-	return userCred
+	return userCred, nil
 }
 
 func getEnvCredential() (bool, credential) {
@@ -53,16 +69,24 @@ func getEnvCredential() (bool, credential) {
 
 }
 
-func GetUserAuth(appName string) credential {
+func GetUserAuth(appName string) (credential, error) {
 	if b, c := getEnvCredential(); b {
-		return c
+		return c, nil
 	}
 
-	cfg := readCredentialFromFile(appName)
+	cfg, err := readCredentialFromFile(appName)
+
+	if err != nil {
+		return *new(credential), err
+	}
 
 	if cfg.Key == "" || cfg.Secret == "" {
-		cfg = getNewCredentials(appName)
+		cfg, err = getNewCredentials(appName)
 	}
 
-	return cfg
+	if err != nil {
+		return *new(credential), err
+	}
+
+	return cfg, nil
 }

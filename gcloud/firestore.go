@@ -2,7 +2,6 @@ package gcloud
 
 import (
 	"fmt"
-	"log"
 	"strings"
 
 	"cloud.google.com/go/firestore"
@@ -20,12 +19,13 @@ func (f *FirestoreClient) Close() {
 	f.Client.Close()
 }
 
-func (f *FirestoreClient) SetDoc(path string, data map[string]interface{}) {
+func (f *FirestoreClient) SetDoc(path string, data map[string]interface{}) error {
 	split := strings.Split(path, "/")
 
 	if len(split)%2 != 0 {
-		errMsg := fmt.Sprintf("incomplete path: must be col/doc/col/doc..../doc, not %s", path)
-		panic(errMsg)
+		err := fmt.Errorf("incomplete path: must be col/doc/col/doc..../doc, not %s", path)
+
+		return err
 	}
 
 	var docRef *firestore.DocumentRef
@@ -41,16 +41,18 @@ func (f *FirestoreClient) SetDoc(path string, data map[string]interface{}) {
 	_, err := docRef.Set(f.app.ctx, data)
 
 	if err != nil {
-		panic(err)
+		return err
 	}
+
+	return nil
 }
 
-func (f *FirestoreClient) GetDoc(path string) map[string]interface{} {
+func (f *FirestoreClient) GetDoc(path string) (*map[string]interface{}, error) {
 	split := strings.Split(path, "/")
 
 	if len(split)%2 != 0 {
-		errMsg := fmt.Sprintf("incomplete path: must be col/doc/col/doc..../doc, not %s", path)
-		panic(errMsg)
+		err := fmt.Errorf("incomplete path: must be col/doc/col/doc..../doc, not %s", path)
+		return nil, err
 	}
 
 	var docRef *firestore.DocumentRef
@@ -66,33 +68,34 @@ func (f *FirestoreClient) GetDoc(path string) map[string]interface{} {
 	doc, err := docRef.Get(f.app.ctx)
 
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	if err != nil {
 		if status.Code(err) == codes.NotFound {
-			errMsg := fmt.Sprintf("document does not exist %s", path)
-			panic(errMsg)
+			err := fmt.Errorf("document does not exist %s", path)
+			return nil, err
 		} else {
-			log.Fatalln(err)
+			return nil, err
 		}
 	}
 
 	if !doc.Exists() {
-		errMsg := fmt.Sprintf("document does not exist %s", path)
-		panic(errMsg)
+		err := fmt.Errorf("document does not exist %s", path)
+
+		return nil, err
 	}
 
 	data := doc.Data()
-	return data
+	return &data, nil
 }
 
-func (f *FirestoreClient) GetManyDocs(path string) []*firestore.DocumentSnapshot {
+func (f *FirestoreClient) GetManyDocs(path string) ([]*firestore.DocumentSnapshot, error) {
 	split := strings.Split(path, "/")
 
 	if len(split)%2 != 1 {
-		errMsg := fmt.Sprintf("incomplete path: must be col/doc/col/doc..../col, not %s", path)
-		panic(errMsg)
+		err := fmt.Errorf("incomplete path: must be col/doc/col/doc..../col, not %s", path)
+		return []*firestore.DocumentSnapshot{}, err
 	}
 
 	var colRef *firestore.CollectionRef
@@ -117,24 +120,28 @@ func (f *FirestoreClient) GetManyDocs(path string) []*firestore.DocumentSnapshot
 		}
 
 		if err != nil {
-			panic(err)
+			return []*firestore.DocumentSnapshot{}, err
 		}
 
 		datas = append(datas, doc)
 
 	}
 
-	return datas
+	return datas, nil
 
 }
 
-func NewFirestore() *FirestoreClient {
-	app := getFirebase()
+func NewFirestore() (*FirestoreClient, error) {
+	app, err := getFirebase()
+
+	if err != nil {
+		return nil, err
+	}
 
 	client, err := app.app.Firestore(app.ctx)
 
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	fsClient := FirestoreClient{
@@ -142,5 +149,5 @@ func NewFirestore() *FirestoreClient {
 		Client: client,
 	}
 
-	return &fsClient
+	return &fsClient, nil
 }

@@ -3,6 +3,7 @@ package gcloud
 import (
 	"context"
 	_ "embed"
+	"fmt"
 
 	firebase "firebase.google.com/go"
 	"google.golang.org/api/option"
@@ -21,9 +22,10 @@ func RegisterServiceAccount(json []byte) {
 	credJSON = &json
 }
 
-func getFirebase() *FirebaseApp {
+func getFirebase() (*FirebaseApp, error) {
 	if credJSON == nil {
-		panic("credentials json must be registered first")
+		err := fmt.Errorf("credentials json must be registered first")
+		return nil, err
 	}
 
 	if app == nil {
@@ -33,11 +35,11 @@ func getFirebase() *FirebaseApp {
 		i_app, err := firebase.NewApp(ctx, nil, opt)
 
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 
 		app = &FirebaseApp{app: i_app, ctx: ctx}
 	}
 
-	return app
+	return app, nil
 }

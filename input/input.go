@@ -3,7 +3,6 @@ package input
 import (
 	"bufio"
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/manifoldco/promptui"
@@ -32,32 +31,41 @@ func makeSelector(label string, items []SelectOption) promptui.Select {
 	return prompt
 }
 
-func GetSelection(label string, items []SelectOption) string {
-	v, _ := GetSelectionIdx(label, items)
-	return v
+func GetSelection(label string, items []SelectOption) (string, error) {
+	v, _, err := GetSelectionIdx(label, items)
+
+	if err != nil {
+		return "", err
+	}
+
+	return v, nil
 }
 
-func GetSelectionIdx(label string, items []SelectOption) (string, int) {
+func GetSelectionIdx(label string, items []SelectOption) (string, int, error) {
 	prompt := makeSelector(label, items)
 
 	i, _, err := prompt.Run()
 
 	if err != nil {
-		log.Fatalln(err)
+		return "", -1, err
 	}
 
-	return items[i].Value, i
+	return items[i].Value, i, nil
 }
 
-func GetConfirmSelection(label string) bool {
+func GetConfirmSelection(label string) (bool, error) {
 	items := []SelectOption{
 		{Name: "Yes", Value: "y"},
 		{Name: "No", Value: "n"},
 	}
 
-	val := GetSelection(label, items)
+	val, err := GetSelection(label, items)
 
-	return val == "y"
+	if err != nil {
+		return false, err
+	}
+
+	return val == "y", nil
 }
 
 func GetInput(label string) string {

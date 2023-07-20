@@ -16,13 +16,13 @@ type Bucket struct {
 	ctx    context.Context
 }
 
-func (b *Bucket) GetFile(key string) []byte {
+func (b *Bucket) GetFile(key string) ([]byte, error) {
 	buffer := bytes.NewBuffer([]byte{})
 
 	rc, err := b.Bucket.Object(key).NewReader(b.ctx)
 
 	if err != nil {
-		panic(err)
+		return []byte{}, err
 	}
 
 	io.Copy(buffer, rc)
@@ -30,13 +30,13 @@ func (b *Bucket) GetFile(key string) []byte {
 	err = rc.Close()
 
 	if err != nil {
-		panic(err)
+		return []byte{}, err
 	}
 
-	return buffer.Bytes()
+	return buffer.Bytes(), nil
 }
 
-func (b *Bucket) UploadFile(key string, contents []byte) {
+func (b *Bucket) UploadFile(key string, contents []byte) error {
 	buf := bytes.NewReader(contents)
 
 	wc := b.Bucket.Object(key).NewWriter(b.ctx)
@@ -46,11 +46,12 @@ func (b *Bucket) UploadFile(key string, contents []byte) {
 	err := wc.Close()
 
 	if err != nil {
-		panic(err)
+		return err
 	}
+	return nil
 }
 
-func (b *Bucket) ListKeys() []string {
+func (b *Bucket) ListKeys() ([]string, error) {
 	keys := []string{}
 
 	result := b.Bucket.Objects(b.ctx, nil)
@@ -63,17 +64,17 @@ func (b *Bucket) ListKeys() []string {
 		}
 
 		if err != nil {
-			panic(err)
+			return keys, err
 		}
 
 		keys = append(keys, object.Name)
 
 	}
 
-	return keys
+	return keys, nil
 }
 
-func (b *Bucket) GetTemporaryUrl(key string, expiry int) string {
+func (b *Bucket) GetTemporaryUrl(key string, expiry int) (string, error) {
 	signOpts := s2.SignedURLOptions{
 		Scheme:  s2.SigningSchemeV4,
 		Method:  "GET",
@@ -82,10 +83,10 @@ func (b *Bucket) GetTemporaryUrl(key string, expiry int) string {
 	u, err := b.Bucket.SignedURL(key, &signOpts)
 
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 
-	return u
+	return u, nil
 }
 
 type GStorageClient struct {
@@ -97,26 +98,30 @@ func (s *GStorageClient) Close() {
 	// theres no close function huh
 }
 
-func (s *GStorageClient) GetBucket(name string) *Bucket {
+func (s *GStorageClient) GetBucket(name string) (*Bucket, error) {
 	bucket, err := s.Client.Bucket(name)
 
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	return &Bucket{
 		Bucket: bucket,
 		ctx:    app.ctx,
-	}
+	}, nil
 }
 
-func NewGStorage() *GStorageClient {
-	app := getFirebase()
+func NewGStorage() (*GStorageClient, error) {
+	app, err := getFirebase()
+
+	if err != nil {
+		return nil, err
+	}
 
 	client, err := app.app.Storage(app.ctx)
 
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	sClient := GStorageClient{
@@ -124,5 +129,5 @@ func NewGStorage() *GStorageClient {
 		Client: client,
 	}
 
-	return &sClient
+	return &sClient, nil
 }

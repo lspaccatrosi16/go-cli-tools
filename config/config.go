@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
 
@@ -12,23 +11,27 @@ import (
 	"github.com/lspaccatrosi16/go-cli-tools/storage"
 )
 
-func GetConfigPath(appName string) string {
+func GetConfigPath(appName string) (string, error) {
 
 	configPath := configdir.LocalConfig(appName)
 	err := configdir.MakePath(configPath)
 
 	if err != nil {
-		log.Fatalln(err)
+		return "", err
 	}
 
-	return configPath
+	return configPath, nil
 }
 
-func GetCredentialsPath(appName string) string {
-	return filepath.Join(GetConfigPath(appName), "credentials.json")
+func GetCredentialsPath(appName string) (string, error) {
+	cpath, err := GetConfigPath(appName)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(cpath, "credentials.json"), nil
 }
 
-func decodeConfigFile[T any](reader io.Reader) T {
+func decodeConfigFile[T any](reader io.Reader) (T, error) {
 	var configContents T
 
 	decoder := json.NewDecoder(reader)
@@ -39,14 +42,14 @@ func decodeConfigFile[T any](reader io.Reader) T {
 		if err == io.EOF {
 			break
 		} else if err != nil {
-			log.Fatalln(err)
+			return *new(T), err
 		}
 	}
 
-	return configContents
+	return configContents, nil
 }
 
-func encodeConfigFile[T any](config T) *bytes.Buffer {
+func encodeConfigFile[T any](config T) (*bytes.Buffer, error) {
 	buf := bytes.NewBuffer([]byte{})
 	encoder := json.NewEncoder(buf)
 
@@ -55,13 +58,13 @@ func encodeConfigFile[T any](config T) *bytes.Buffer {
 	err := encoder.Encode(&config)
 
 	if err != nil {
-		log.Fatalln(err)
+		return nil, err
 	}
 
-	return buf
+	return buf, nil
 }
 
-func ReadConfigFile[T any](path string, defaultJson []byte) T {
+func ReadConfigFile[T any](path string, defaultJson []byte) (T, error) {
 	var reader io.Reader
 
 	fh, err := os.Open(path)
@@ -70,41 +73,75 @@ func ReadConfigFile[T any](path string, defaultJson []byte) T {
 		if os.IsNotExist(err) {
 			reader = bytes.NewReader(defaultJson)
 		} else {
-			log.Fatalln(err)
+			return *new(T), err
 		}
 	} else {
 		reader = fh
 	}
 
 	defer fh.Close()
-	return decodeConfigFile[T](reader)
+
+	decodeRes, err := decodeConfigFile[T](reader)
+
+	if err != nil {
+		return *new(T), err
+	}
+
+	return decodeRes, nil
 }
 
-func ReadCloudConfigFile[T any](bucket storage.StorageProvider, key string) T {
-	file := bucket.GetFile(key)
+func ReadCloudConfigFile[T any](bucket storage.StorageProvider, key string) (T, error) {
+	file, err := bucket.GetFile(key)
+
+	if err != nil {
+		return *new(T), err
+	}
+
 	reader := bytes.NewReader(file)
 
-	return decodeConfigFile[T](reader)
+	decodeRes, err := decodeConfigFile[T](reader)
+
+	if err != nil {
+		return *new(T), err
+	}
+
+	return decodeRes, nil
 }
 
-func WriteConfigFile[T any](path string, config T) {
-	reader := encodeConfigFile[T](config)
+func WriteConfigFile[T any](path string, config T) error {
+	reader, err := encodeConfigFile[T](config)
+
+	if err != nil {
+		return err
+	}
 
 	fh, err := os.Create(path)
 
 	if err != nil {
-		log.Fatalln(err)
+		return err
 	}
 
 	defer fh.Close()
 
 	io.Copy(fh, reader)
+
+	return nil
 }
 
-func WritCloudConfigFile[T any](bucket storage.StorageProvider, key string, config T) {
-	reader := encodeConfigFile[T](config)
+func WritCloudConfigFile[T any](bucket storage.StorageProvider, key string, config T) error {
+	reader, err := encodeConfigFile[T](config)
+
+	if err != nil {
+		return err
+	}
 
 	file := reader.Bytes()
 
-	bucket.UploadFile(key, file)
+	err = bucket.UploadFile(key, file)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

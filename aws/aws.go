@@ -2,7 +2,6 @@ package aws
 
 import (
 	"context"
-	"log"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 
@@ -16,24 +15,24 @@ func GetCredentialFromValue(key string, secret string) credentials.StaticCredent
 	return provider
 }
 
-func GetConfigWithCredential(cred credentials.StaticCredentialsProvider, region string) aws.Config {
+func GetConfigWithCredential(cred credentials.StaticCredentialsProvider, region string) (*aws.Config, error) {
 	sdkConfig, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion(region), config.WithCredentialsProvider(cred))
 
 	if err != nil {
-		log.Fatalln(err)
+		return nil, err
 	}
 
-	return sdkConfig
+	return &sdkConfig, nil
 
 }
 
-func GetConfig(region string) aws.Config {
+func GetConfig(region string) (*aws.Config, error) {
 
 	sdkConfig, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion(region))
 
 	if err != nil {
-		log.Fatalln(err)
+		return nil, err
 	}
 
-	return sdkConfig
+	return &sdkConfig, nil
 }
