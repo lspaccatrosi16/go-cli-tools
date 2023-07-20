@@ -20,7 +20,7 @@ func (l Lambda) UpdateFunctionCode(arn string, bucket string, key string) error 
 	})
 
 	if err != nil {
-		return err
+		return wrap(err)
 	}
 
 	return nil

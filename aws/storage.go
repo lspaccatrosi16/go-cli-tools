@@ -33,7 +33,7 @@ func (b Bucket) UploadFile(key string, file []byte) error {
 	})
 
 	if err != nil {
-		return err
+		return wrap(err)
 	}
 
 	return nil
@@ -53,7 +53,7 @@ func (b Bucket) GetFile(key string) ([]byte, error) {
 	})
 
 	if err != nil {
-		return []byte{}, err
+		return []byte{}, wrap(err)
 	}
 
 	return buffer.Bytes(), nil
@@ -67,7 +67,7 @@ func (b Bucket) ListKeys() ([]string, error) {
 	})
 
 	if err != nil {
-		return keys, err
+		return keys, wrap(err)
 	}
 
 	for _, k := range result.Contents {
@@ -85,7 +85,7 @@ func (b Bucket) GetTemporaryUrl(key string, expiry int) (string, error) {
 	}, s3.WithPresignExpires(time.Hour*time.Duration(expiry)))
 
 	if err != nil {
-		return "", err
+		return "", wrap(err)
 	}
 
 	return presignedUrl.URL, nil

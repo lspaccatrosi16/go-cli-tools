@@ -8,16 +8,18 @@ import (
 	"path/filepath"
 
 	"github.com/kirsle/configdir"
+	"github.com/lspaccatrosi16/go-cli-tools/pkgError"
 	"github.com/lspaccatrosi16/go-cli-tools/storage"
 )
 
-func GetConfigPath(appName string) (string, error) {
+var wrap = pkgError.WrapErrorFactory("config")
 
+func GetConfigPath(appName string) (string, error) {
 	configPath := configdir.LocalConfig(appName)
 	err := configdir.MakePath(configPath)
 
 	if err != nil {
-		return "", err
+		return "", wrap(err)
 	}
 
 	return configPath, nil
@@ -26,7 +28,7 @@ func GetConfigPath(appName string) (string, error) {
 func GetCredentialsPath(appName string) (string, error) {
 	cpath, err := GetConfigPath(appName)
 	if err != nil {
-		return "", err
+		return "", wrap(err)
 	}
 	return filepath.Join(cpath, "credentials.json"), nil
 }
@@ -42,7 +44,7 @@ func decodeConfigFile[T any](reader io.Reader) (T, error) {
 		if err == io.EOF {
 			break
 		} else if err != nil {
-			return *new(T), err
+			return *new(T), wrap(err)
 		}
 	}
 
@@ -58,7 +60,7 @@ func encodeConfigFile[T any](config T) (*bytes.Buffer, error) {
 	err := encoder.Encode(&config)
 
 	if err != nil {
-		return nil, err
+		return nil, wrap(err)
 	}
 
 	return buf, nil
@@ -73,7 +75,7 @@ func ReadConfigFile[T any](path string, defaultJson []byte) (T, error) {
 		if os.IsNotExist(err) {
 			reader = bytes.NewReader(defaultJson)
 		} else {
-			return *new(T), err
+			return *new(T), wrap(err)
 		}
 	} else {
 		reader = fh
@@ -84,7 +86,7 @@ func ReadConfigFile[T any](path string, defaultJson []byte) (T, error) {
 	decodeRes, err := decodeConfigFile[T](reader)
 
 	if err != nil {
-		return *new(T), err
+		return *new(T), wrap(err)
 	}
 
 	return decodeRes, nil
@@ -94,7 +96,7 @@ func ReadCloudConfigFile[T any](bucket storage.StorageProvider, key string) (T, 
 	file, err := bucket.GetFile(key)
 
 	if err != nil {
-		return *new(T), err
+		return *new(T), wrap(err)
 	}
 
 	reader := bytes.NewReader(file)
@@ -102,7 +104,7 @@ func ReadCloudConfigFile[T any](bucket storage.StorageProvider, key string) (T, 
 	decodeRes, err := decodeConfigFile[T](reader)
 
 	if err != nil {
-		return *new(T), err
+		return *new(T), wrap(err)
 	}
 
 	return decodeRes, nil
@@ -112,13 +114,13 @@ func WriteConfigFile[T any](path string, config T) error {
 	reader, err := encodeConfigFile[T](config)
 
 	if err != nil {
-		return err
+		return wrap(err)
 	}
 
 	fh, err := os.Create(path)
 
 	if err != nil {
-		return err
+		return wrap(err)
 	}
 
 	defer fh.Close()
@@ -132,7 +134,7 @@ func WritCloudConfigFile[T any](bucket storage.StorageProvider, key string, conf
 	reader, err := encodeConfigFile[T](config)
 
 	if err != nil {
-		return err
+		return wrap(err)
 	}
 
 	file := reader.Bytes()
@@ -140,7 +142,7 @@ func WritCloudConfigFile[T any](bucket storage.StorageProvider, key string, conf
 	err = bucket.UploadFile(key, file)
 
 	if err != nil {
-		return err
+		return wrap(err)
 	}
 
 	return nil

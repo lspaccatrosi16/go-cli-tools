@@ -8,7 +8,10 @@ import (
 	"github.com/lspaccatrosi16/go-cli-tools/config"
 	"github.com/lspaccatrosi16/go-cli-tools/input"
 	"github.com/lspaccatrosi16/go-cli-tools/logging"
+	"github.com/lspaccatrosi16/go-cli-tools/pkgError"
 )
+
+var wrap = pkgError.WrapErrorFactory("credential")
 
 //go:embed baseCredential.json
 var baseJson []byte
@@ -17,13 +20,13 @@ func readCredentialFromFile(appName string) (credential, error) {
 	credPath, err := config.GetCredentialsPath(appName)
 
 	if err != nil {
-		return *new(credential), err
+		return *new(credential), wrap(err)
 	}
 
 	cred, err := config.ReadConfigFile[credential](credPath, baseJson)
 
 	if err != nil {
-		return *new(credential), err
+		return *new(credential), wrap(err)
 	}
 
 	return cred, nil
@@ -44,7 +47,7 @@ func getNewCredentials(appName string) (credential, error) {
 	credPath, err := config.GetCredentialsPath(appName)
 
 	if err != nil {
-		return *new(credential), err
+		return *new(credential), wrap(err)
 	}
 
 	config.WriteConfigFile[credential](credPath, userCred)
@@ -77,7 +80,7 @@ func GetUserAuth(appName string) (credential, error) {
 	cfg, err := readCredentialFromFile(appName)
 
 	if err != nil {
-		return *new(credential), err
+		return *new(credential), wrap(err)
 	}
 
 	if cfg.Key == "" || cfg.Secret == "" {
@@ -85,7 +88,7 @@ func GetUserAuth(appName string) (credential, error) {
 	}
 
 	if err != nil {
-		return *new(credential), err
+		return *new(credential), wrap(err)
 	}
 
 	return cfg, nil

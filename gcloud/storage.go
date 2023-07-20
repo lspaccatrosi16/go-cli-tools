@@ -22,7 +22,7 @@ func (b *Bucket) GetFile(key string) ([]byte, error) {
 	rc, err := b.Bucket.Object(key).NewReader(b.ctx)
 
 	if err != nil {
-		return []byte{}, err
+		return []byte{}, wrap(err)
 	}
 
 	io.Copy(buffer, rc)
@@ -30,7 +30,7 @@ func (b *Bucket) GetFile(key string) ([]byte, error) {
 	err = rc.Close()
 
 	if err != nil {
-		return []byte{}, err
+		return []byte{}, wrap(err)
 	}
 
 	return buffer.Bytes(), nil
@@ -46,7 +46,7 @@ func (b *Bucket) UploadFile(key string, contents []byte) error {
 	err := wc.Close()
 
 	if err != nil {
-		return err
+		return wrap(err)
 	}
 	return nil
 }
@@ -64,7 +64,7 @@ func (b *Bucket) ListKeys() ([]string, error) {
 		}
 
 		if err != nil {
-			return keys, err
+			return keys, wrap(err)
 		}
 
 		keys = append(keys, object.Name)
@@ -83,7 +83,7 @@ func (b *Bucket) GetTemporaryUrl(key string, expiry int) (string, error) {
 	u, err := b.Bucket.SignedURL(key, &signOpts)
 
 	if err != nil {
-		return "", err
+		return "", wrap(err)
 	}
 
 	return u, nil
@@ -102,7 +102,7 @@ func (s *GStorageClient) GetBucket(name string) (*Bucket, error) {
 	bucket, err := s.Client.Bucket(name)
 
 	if err != nil {
-		return nil, err
+		return nil, wrap(err)
 	}
 
 	return &Bucket{
@@ -115,13 +115,13 @@ func NewGStorage() (*GStorageClient, error) {
 	app, err := getFirebase()
 
 	if err != nil {
-		return nil, err
+		return nil, wrap(err)
 	}
 
 	client, err := app.app.Storage(app.ctx)
 
 	if err != nil {
-		return nil, err
+		return nil, wrap(err)
 	}
 
 	sClient := GStorageClient{

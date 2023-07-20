@@ -3,7 +3,11 @@ package parser
 import (
 	"fmt"
 	"strings"
+
+	"github.com/lspaccatrosi16/go-cli-tools/pkgError"
 )
+
+var errorf = pkgError.ErrorfFactory("parser")
 
 // takes in a string with formatting directives, and finds them from a map[string]interface{} of values until it reaches the value
 
@@ -21,7 +25,7 @@ func getValue(directive string, data Object) (interface{}, []error) {
 	val, exists := data[directiveComponents[0]]
 
 	if !exists {
-		parseErrors = append(parseErrors, fmt.Errorf("field %s not found in object", directive))
+		parseErrors = append(parseErrors, errorf("field %s not found in object", directive))
 		return nil, parseErrors
 	}
 
@@ -38,7 +42,7 @@ func getValue(directive string, data Object) (interface{}, []error) {
 		val, errs := getValue(newDirective, asObject)
 
 		if len(errs) != 0 {
-			recievedErr := fmt.Errorf("error recieved whilst parsing %s", directive)
+			recievedErr := errorf("error recieved whilst parsing %s", directive)
 			parseErrors = append(parseErrors, recievedErr)
 
 			parseErrors = append(parseErrors, errs...)

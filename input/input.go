@@ -5,11 +5,14 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/lspaccatrosi16/go-cli-tools/pkgError"
 	"github.com/manifoldco/promptui"
 )
 
 const LINE_UP = "\033[1A"
 const LINE_CLEAR = "\x1b[2K"
+
+var wrap = pkgError.WrapErrorFactory("input")
 
 func getInputTemplate() *promptui.SelectTemplates {
 	return &promptui.SelectTemplates{
@@ -35,7 +38,7 @@ func GetSelection(label string, items []SelectOption) (string, error) {
 	v, _, err := GetSelectionIdx(label, items)
 
 	if err != nil {
-		return "", err
+		return "", wrap(err)
 	}
 
 	return v, nil
@@ -47,7 +50,7 @@ func GetSelectionIdx(label string, items []SelectOption) (string, int, error) {
 	i, _, err := prompt.Run()
 
 	if err != nil {
-		return "", -1, err
+		return "", -1, wrap(err)
 	}
 
 	return items[i].Value, i, nil
@@ -62,7 +65,7 @@ func GetConfirmSelection(label string) (bool, error) {
 	val, err := GetSelection(label, items)
 
 	if err != nil {
-		return false, err
+		return false, wrap(err)
 	}
 
 	return val == "y", nil

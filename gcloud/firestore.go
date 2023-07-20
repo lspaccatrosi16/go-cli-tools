@@ -1,7 +1,6 @@
 package gcloud
 
 import (
-	"fmt"
 	"strings"
 
 	"cloud.google.com/go/firestore"
@@ -23,7 +22,7 @@ func (f *FirestoreClient) SetDoc(path string, data map[string]interface{}) error
 	split := strings.Split(path, "/")
 
 	if len(split)%2 != 0 {
-		err := fmt.Errorf("incomplete path: must be col/doc/col/doc..../doc, not %s", path)
+		err := errorf("incomplete path: must be col/doc/col/doc..../doc, not %s", path)
 
 		return err
 	}
@@ -41,7 +40,7 @@ func (f *FirestoreClient) SetDoc(path string, data map[string]interface{}) error
 	_, err := docRef.Set(f.app.ctx, data)
 
 	if err != nil {
-		return err
+		return wrap(err)
 	}
 
 	return nil
@@ -51,7 +50,7 @@ func (f *FirestoreClient) GetDoc(path string) (*map[string]interface{}, error) {
 	split := strings.Split(path, "/")
 
 	if len(split)%2 != 0 {
-		err := fmt.Errorf("incomplete path: must be col/doc/col/doc..../doc, not %s", path)
+		err := errorf("incomplete path: must be col/doc/col/doc..../doc, not %s", path)
 		return nil, err
 	}
 
@@ -68,20 +67,20 @@ func (f *FirestoreClient) GetDoc(path string) (*map[string]interface{}, error) {
 	doc, err := docRef.Get(f.app.ctx)
 
 	if err != nil {
-		return nil, err
+		return nil, wrap(err)
 	}
 
 	if err != nil {
 		if status.Code(err) == codes.NotFound {
-			err := fmt.Errorf("document does not exist %s", path)
+			err := errorf("document does not exist %s", path)
 			return nil, err
 		} else {
-			return nil, err
+			return nil, wrap(err)
 		}
 	}
 
 	if !doc.Exists() {
-		err := fmt.Errorf("document does not exist %s", path)
+		err := errorf("document does not exist %s", path)
 
 		return nil, err
 	}
@@ -94,7 +93,7 @@ func (f *FirestoreClient) GetManyDocs(path string) ([]*firestore.DocumentSnapsho
 	split := strings.Split(path, "/")
 
 	if len(split)%2 != 1 {
-		err := fmt.Errorf("incomplete path: must be col/doc/col/doc..../col, not %s", path)
+		err := errorf("incomplete path: must be col/doc/col/doc..../col, not %s", path)
 		return []*firestore.DocumentSnapshot{}, err
 	}
 
@@ -120,7 +119,7 @@ func (f *FirestoreClient) GetManyDocs(path string) ([]*firestore.DocumentSnapsho
 		}
 
 		if err != nil {
-			return []*firestore.DocumentSnapshot{}, err
+			return []*firestore.DocumentSnapshot{}, wrap(err)
 		}
 
 		datas = append(datas, doc)
@@ -135,13 +134,13 @@ func NewFirestore() (*FirestoreClient, error) {
 	app, err := getFirebase()
 
 	if err != nil {
-		return nil, err
+		return nil, wrap(err)
 	}
 
 	client, err := app.app.Firestore(app.ctx)
 
 	if err != nil {
-		return nil, err
+		return nil, wrap(err)
 	}
 
 	fsClient := FirestoreClient{

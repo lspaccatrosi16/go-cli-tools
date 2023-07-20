@@ -3,9 +3,9 @@ package gcloud
 import (
 	"context"
 	_ "embed"
-	"fmt"
 
 	firebase "firebase.google.com/go"
+	"github.com/lspaccatrosi16/go-cli-tools/pkgError"
 	"google.golang.org/api/option"
 )
 
@@ -18,13 +18,16 @@ type FirebaseApp struct {
 
 var app *FirebaseApp
 
+var wrap = pkgError.WrapErrorFactory("gcloud")
+var errorf = pkgError.ErrorfFactory("gcloud")
+
 func RegisterServiceAccount(json []byte) {
 	credJSON = &json
 }
 
 func getFirebase() (*FirebaseApp, error) {
 	if credJSON == nil {
-		err := fmt.Errorf("credentials json must be registered first")
+		err := errorf("credentials json must be registered first")
 		return nil, err
 	}
 
@@ -35,7 +38,7 @@ func getFirebase() (*FirebaseApp, error) {
 		i_app, err := firebase.NewApp(ctx, nil, opt)
 
 		if err != nil {
-			return nil, err
+			return nil, wrap(err)
 		}
 
 		app = &FirebaseApp{app: i_app, ctx: ctx}
