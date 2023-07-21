@@ -19,7 +19,7 @@ type Bucket struct {
 
 const partMibs int64 = 10
 
-func (b Bucket) UploadFile(key string, file []byte) error {
+func (b *Bucket) UploadFile(key string, file []byte) error {
 	buf := bytes.NewReader(file)
 
 	uploader := manager.NewUploader(b.S3Client, func(u *manager.Uploader) {
@@ -39,7 +39,7 @@ func (b Bucket) UploadFile(key string, file []byte) error {
 	return nil
 }
 
-func (b Bucket) GetFile(key string) ([]byte, error) {
+func (b *Bucket) GetFile(key string) ([]byte, error) {
 
 	downloader := manager.NewDownloader(b.S3Client, func(d *manager.Downloader) {
 		d.PartSize = partMibs * 1024 * 1024
@@ -59,7 +59,19 @@ func (b Bucket) GetFile(key string) ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func (b Bucket) ListKeys() ([]string, error) {
+func (b *Bucket) DeleteFile(key string) error {
+	_, err := b.S3Client.DeleteObject(context.TODO(), &s3.DeleteObjectInput{
+		Key: aws.String(key),
+	})
+
+	if err != nil {
+		return wrap(err)
+	}
+
+	return nil
+}
+
+func (b *Bucket) ListKeys() ([]string, error) {
 	keys := []string{}
 
 	result, err := b.S3Client.ListObjectsV2(context.TODO(), &s3.ListObjectsV2Input{
@@ -77,7 +89,7 @@ func (b Bucket) ListKeys() ([]string, error) {
 	return keys, nil
 }
 
-func (b Bucket) GetTemporaryUrl(key string, expiry int) (string, error) {
+func (b *Bucket) GetTemporaryUrl(key string, expiry int) (string, error) {
 	presignClient := s3.NewPresignClient(b.S3Client)
 	presignedUrl, err := presignClient.PresignGetObject(context.TODO(), &s3.GetObjectInput{
 		Bucket: aws.String(b.Bucket),
@@ -91,7 +103,7 @@ func (b Bucket) GetTemporaryUrl(key string, expiry int) (string, error) {
 	return presignedUrl.URL, nil
 }
 
-func (b Bucket) GetObjectUrl(key string) string {
+func (b *Bucket) GetObjectUrl(key string) string {
 	region := b.Config.Region
 	return fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", b.Bucket, region, key)
 }

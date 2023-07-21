@@ -51,6 +51,18 @@ func (b *Bucket) UploadFile(key string, contents []byte) error {
 	return nil
 }
 
+func (b *Bucket) DeleteFile(key string) error {
+	obj := b.Bucket.Object(key)
+
+	err := obj.Delete(b.ctx)
+
+	if err != nil {
+		return wrap(err)
+	}
+
+	return nil
+}
+
 func (b *Bucket) ListKeys() ([]string, error) {
 	keys := []string{}
 

@@ -1,6 +1,9 @@
 package pkgError
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type packageError struct {
 	err string
@@ -12,7 +15,16 @@ func (e *packageError) Error() string {
 }
 
 func WrapError(pkg string, err error) error {
+	if e, ok := err.(*packageError); ok {
+		return e
+	}
+
 	str := err.Error()
+
+	if strings.HasPrefix(str, "go-cli-tools") {
+		return err
+	}
+
 	return Error(pkg, str)
 }
 
