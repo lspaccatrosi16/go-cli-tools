@@ -10,7 +10,8 @@ type AuthClient struct {
 	Client *auth.Client
 }
 
-type UserRecords = *[]*auth.UserRecord
+type UserRecord = *auth.UserRecord
+type UserRecords = *[]UserRecord
 
 func (a *AuthClient) GetUser(uid string) (*auth.UserRecord, error) {
 	u, err := a.Client.GetUser(app.ctx, uid)
