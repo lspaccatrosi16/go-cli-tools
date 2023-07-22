@@ -10,6 +10,8 @@ type AuthClient struct {
 	Client *auth.Client
 }
 
+type UserRecords = *[]*auth.UserRecord
+
 func (a *AuthClient) GetUser(uid string) (*auth.UserRecord, error) {
 	u, err := a.Client.GetUser(app.ctx, uid)
 
@@ -20,7 +22,7 @@ func (a *AuthClient) GetUser(uid string) (*auth.UserRecord, error) {
 	return u, nil
 }
 
-func (a *AuthClient) GetUsers() (*[]*auth.UserRecord, error) {
+func (a *AuthClient) GetUsers() (UserRecords, error) {
 	userList := []*auth.UserRecord{}
 
 	iter := a.Client.Users(a.app.ctx, "")
