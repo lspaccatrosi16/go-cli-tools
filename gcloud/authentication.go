@@ -64,7 +64,14 @@ func (a *AuthClient) GenerateTemporaryPassword(pLen int) (string, error) {
 	for i, b := range bytes {
 		ratio := float64(b / math.MaxUint8)
 		letterIdx := int(math.Floor(ratio * letterLen))
-		randomString[i] = letters[letterIdx-1]
+
+		if letterIdx+1 >= len(letters) {
+			letterIdx = len(letters) - 1
+		} else if letterIdx < 0 {
+			letterIdx = 0
+		}
+
+		randomString[i] = letters[letterIdx]
 	}
 
 	return string(randomString), nil
