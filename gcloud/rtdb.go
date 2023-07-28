@@ -31,6 +31,23 @@ func (r *RTDBClient) Read(path string) (interface{}, error) {
 	return data, nil
 }
 
+func NewDefaultRTDB() (*RTDBClient, error) {
+	app, err := getFirebase()
+
+	if err != nil {
+		return nil, wrapRTDB(err)
+	}
+	client, err := app.app.Database(app.ctx)
+	if err != nil {
+		return nil, wrapRTDB(err)
+	}
+	mClient := RTDBClient{
+		app:    app,
+		Client: client,
+	}
+	return &mClient, nil
+}
+
 func NewRTDB(url string) (*RTDBClient, error) {
 	app, err := getFirebase()
 

@@ -62,7 +62,7 @@ func (a *AuthClient) GenerateTemporaryPassword(pLen int) (string, error) {
 	letterLen := float64(len(letters))
 
 	for i, b := range bytes {
-		ratio := float64(b / math.MaxUint8)
+		ratio := float64(b) / float64(math.MaxUint8)
 		letterIdx := int(math.Floor(ratio * letterLen))
 
 		if letterIdx+1 >= len(letters) {
