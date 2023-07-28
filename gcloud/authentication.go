@@ -81,13 +81,13 @@ func NewFirebaseAuth() (*AuthClient, error) {
 	app, err := getFirebase()
 
 	if err != nil {
-		return nil, wrap(err)
+		return nil, wrapAuth(err)
 	}
 
 	client, err := app.app.Auth(app.ctx)
 
 	if err != nil {
-		return nil, wrap(err)
+		return nil, wrapAuth(err)
 	}
 
 	aClient := AuthClient{

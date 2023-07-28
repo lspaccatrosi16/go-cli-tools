@@ -19,7 +19,7 @@ func (m *MessagingClient) SendMessage(title string, body string, data map[string
 	})
 
 	if err != nil {
-		return wrap(err)
+		return wrapMessaging(err)
 	}
 	return nil
 }
@@ -31,7 +31,7 @@ func (m *MessagingClient) SendDataMessage(data map[string]string, tokens []strin
 	})
 
 	if err != nil {
-		return wrap(err)
+		return wrapMessaging(err)
 	}
 	return nil
 }
@@ -40,13 +40,13 @@ func NewMessaging() (*MessagingClient, error) {
 	app, err := getFirebase()
 
 	if err != nil {
-		return nil, wrap(err)
+		return nil, wrapMessaging(err)
 	}
 
 	client, err := app.app.Messaging(app.ctx)
 
 	if err != nil {
-		return nil, wrap(err)
+		return nil, wrapMessaging(err)
 	}
 
 	mClient := MessagingClient{

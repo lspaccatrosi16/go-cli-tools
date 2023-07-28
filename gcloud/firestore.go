@@ -66,13 +66,13 @@ func (f *FirestoreClient) SetDoc(path string, data map[string]interface{}) error
 	docRef, err := f.parseDocPath(path)
 
 	if err != nil {
-		return wrap(err)
+		return wrapFirestore(err)
 	}
 
 	_, err = docRef.Set(f.app.ctx, data)
 
 	if err != nil {
-		return wrap(err)
+		return wrapFirestore(err)
 	}
 
 	return nil
@@ -82,13 +82,13 @@ func (f *FirestoreClient) GetDoc(path string) (*map[string]interface{}, error) {
 	docRef, err := f.parseDocPath(path)
 
 	if err != nil {
-		return nil, wrap(err)
+		return nil, wrapFirestore(err)
 	}
 
 	doc, err := docRef.Get(f.app.ctx)
 
 	if err != nil {
-		return nil, wrap(err)
+		return nil, wrapFirestore(err)
 	}
 
 	if err != nil {
@@ -96,7 +96,7 @@ func (f *FirestoreClient) GetDoc(path string) (*map[string]interface{}, error) {
 			err := errorf("document does not exist %s", path)
 			return nil, err
 		} else {
-			return nil, wrap(err)
+			return nil, wrapFirestore(err)
 		}
 	}
 
@@ -114,7 +114,7 @@ func (f *FirestoreClient) GetManyDocs(path string) ([]*firestore.DocumentSnapsho
 	colRef, err := f.parseColPath(path)
 
 	if err != nil {
-		return []*firestore.DocumentSnapshot{}, wrap(err)
+		return []*firestore.DocumentSnapshot{}, wrapFirestore(err)
 	}
 
 	datas := []*firestore.DocumentSnapshot{}
@@ -128,7 +128,7 @@ func (f *FirestoreClient) GetManyDocs(path string) ([]*firestore.DocumentSnapsho
 		}
 
 		if err != nil {
-			return []*firestore.DocumentSnapshot{}, wrap(err)
+			return []*firestore.DocumentSnapshot{}, wrapFirestore(err)
 		}
 
 		datas = append(datas, doc)
@@ -143,13 +143,13 @@ func (f *FirestoreClient) DeleteDoc(path string) error {
 	docRef, err := f.parseDocPath(path)
 
 	if err != nil {
-		return wrap(err)
+		return wrapFirestore(err)
 	}
 
 	_, err = docRef.Delete(f.app.ctx)
 
 	if err != nil {
-		return wrap(err)
+		return wrapFirestore(err)
 	}
 
 	return nil
@@ -159,13 +159,13 @@ func NewFirestore() (*FirestoreClient, error) {
 	app, err := getFirebase()
 
 	if err != nil {
-		return nil, wrap(err)
+		return nil, wrapFirestore(err)
 	}
 
 	client, err := app.app.Firestore(app.ctx)
 
 	if err != nil {
-		return nil, wrap(err)
+		return nil, wrapFirestore(err)
 	}
 
 	fsClient := FirestoreClient{
