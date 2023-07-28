@@ -1,7 +1,7 @@
 package gcloud
 
 import (
-	"firebase.google.com/go/db"
+	"firebase.google.com/go/v4/db"
 )
 
 type RTDBClient struct {

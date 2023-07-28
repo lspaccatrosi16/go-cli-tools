@@ -7,7 +7,7 @@ import (
 	"time"
 
 	s2 "cloud.google.com/go/storage"
-	s1 "firebase.google.com/go/storage"
+	s1 "firebase.google.com/go/v4/storage"
 	"google.golang.org/api/iterator"
 )
 

@@ -1,6 +1,6 @@
 package gcloud
 
-import "firebase.google.com/go/messaging"
+import "firebase.google.com/go/v4/messaging"
 
 type MessagingClient struct {
 	app    *FirebaseApp
