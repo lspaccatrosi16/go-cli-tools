@@ -24,6 +24,18 @@ func (m *MessagingClient) SendMessage(title string, body string, data map[string
 	return nil
 }
 
+func (m *MessagingClient) SendDataMessage(data map[string]string, tokens []string) error {
+	_, err := m.Client.SendMulticast(app.ctx, &messaging.MulticastMessage{
+		Tokens: tokens,
+		Data:   data,
+	})
+
+	if err != nil {
+		return wrap(err)
+	}
+	return nil
+}
+
 func NewMessaging() (*MessagingClient, error) {
 	app, err := getFirebase()
 
