@@ -17,7 +17,7 @@ func (m *MessagingClient) SendMessage(title string, body string, data map[string
 		},
 		Data: data,
 	})
-	return err
+	return wrap(err)
 }
 
 func NewMessaging() (*MessagingClient, error) {
