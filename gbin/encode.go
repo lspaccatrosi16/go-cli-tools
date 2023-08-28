@@ -7,26 +7,27 @@ import (
 	"reflect"
 )
 
-type transformer struct {
+type encodeTransformer struct {
 }
 
-func new_transformer() *transformer {
-	return &transformer{}
+func newEncodeTransformer() *encodeTransformer {
+	return &encodeTransformer{}
 }
-
-const MAX_PAYLOAD_LEN = 0xfffffff
 
 /*
 GENERAL SPECIFICATION
 ======================================================================================
 
+HEADER:
 CONTROL CODE: 1 BYTE
+
+(treat as UINT64)
 PAYLOAD LENGTH: 7 BYTES
 
 PAYLOAD
 */
 
-func (t *transformer) encode(v reflect.Value) ([]byte, error) {
+func (t *encodeTransformer) encode(v reflect.Value) ([]byte, error) {
 	switch v.Kind() {
 	case reflect.Map:
 		return t.encode_map(v.MapRange())
@@ -52,21 +53,8 @@ func (t *transformer) encode(v reflect.Value) ([]byte, error) {
 	}
 }
 
-type EncodedType byte
-
-const (
-	FLOAT  EncodedType = 1
-	INT                = 2
-	BOOL               = 4
-	STRING             = 8
-	SLICE              = 16
-	PTR                = 32
-	STRUCT             = 64
-	MAP                = 128
-)
-
 //PAYLOAD: ENCODED, ENCODED
-func (t *transformer) encode_map(m *reflect.MapIter) ([]byte, error) {
+func (t *encodeTransformer) encode_map(m *reflect.MapIter) ([]byte, error) {
 	buf := bytes.NewBuffer([]byte{})
 	for {
 		if !m.Next() {
@@ -90,30 +78,34 @@ func (t *transformer) encode_map(m *reflect.MapIter) ([]byte, error) {
 
 }
 
-//PAYLOAD: I64 field index, ENCODED VALUE
-func (t *transformer) encode_struct(value reflect.Value) ([]byte, error) {
+//PAYLOAD: STRING FIELD NAME, ENCODED VALUE
+func (t *encodeTransformer) encode_struct(value reflect.Value) ([]byte, error) {
 	buf := bytes.NewBuffer([]byte{})
 	n := value.NumField()
 	ty := value.Type()
 	for i := 0; i < n; i++ {
 		val := value.Field(i)
 		field := ty.Field(i)
-		fIdx := field.Index
-		if len(fIdx) != 1 {
-			return []byte{}, fmt.Errorf("embedded structs with multi layer access are not supported")
+		if !field.IsExported() {
+			continue
 		}
-		binary.Write(buf, binary.BigEndian, int64(fIdx[0]))
+		fName := field.Name
+		encodedName, err := t.encode(reflect.ValueOf(fName))
+		if err != nil {
+			return []byte{}, err
+		}
 		fieldVal, err := t.encode(val)
 		if err != nil {
 			return []byte{}, err
 		}
+		buf.Write(encodedName)
 		buf.Write(fieldVal)
 	}
 	return t.format_encode(STRUCT, buf.Bytes())
 }
 
 // PAYLOAD: ENCODED VALUE POINTED AT
-func (t *transformer) encode_ptr(value reflect.Value) ([]byte, error) {
+func (t *encodeTransformer) encode_ptr(value reflect.Value) ([]byte, error) {
 	buf := bytes.NewBuffer([]byte{})
 	pointedAt := value.Elem()
 	encoded, err := t.encode(pointedAt)
@@ -125,7 +117,7 @@ func (t *transformer) encode_ptr(value reflect.Value) ([]byte, error) {
 }
 
 //PAYLOAD: SERIES OF BYTES
-func (t *transformer) encode_slice(value reflect.Value) ([]byte, error) {
+func (t *encodeTransformer) encode_slice(value reflect.Value) ([]byte, error) {
 	buf := bytes.NewBuffer([]byte{})
 	n := value.Len()
 	for i := 0; i < n; i++ {
@@ -140,41 +132,43 @@ func (t *transformer) encode_slice(value reflect.Value) ([]byte, error) {
 }
 
 //PAYLOAD: BINARY ENCODED STRING AS BYTE ARRAY
-func (t *transformer) encode_string(s string) ([]byte, error) {
+func (t *encodeTransformer) encode_string(s string) ([]byte, error) {
 	buf := bytes.NewBuffer([]byte{})
-	binary.Write(buf, binary.BigEndian, []byte(s))
+	for _, c := range s {
+		buf.WriteRune(c)
+	}
 	return t.format_encode(STRING, buf.Bytes())
 }
 
 //PAYLOAD: BINARY ENCODED BOOL
-func (t *transformer) encode_bool(b bool) ([]byte, error) {
+func (t *encodeTransformer) encode_bool(b bool) ([]byte, error) {
 	buf := bytes.NewBuffer([]byte{})
-	binary.Write(buf, binary.BigEndian, b)
+	binary.Write(buf, BYTE_ORDER, b)
 	return t.format_encode(BOOL, buf.Bytes())
 }
 
 //PAYLOAD: BINARY ENCODED INT64
-func (t *transformer) encode_int(i int64) ([]byte, error) {
+func (t *encodeTransformer) encode_int(i int64) ([]byte, error) {
 	buf := bytes.NewBuffer([]byte{})
-	binary.Write(buf, binary.BigEndian, i)
+	binary.Write(buf, BYTE_ORDER, i)
 	return t.format_encode(INT, buf.Bytes())
 }
 
 //PAYLOAD: BINARY ENCODED FLOAT64
-func (t *transformer) encode_float(f float64) ([]byte, error) {
+func (t *encodeTransformer) encode_float(f float64) ([]byte, error) {
 	buf := bytes.NewBuffer([]byte{})
-	binary.Write(buf, binary.BigEndian, f)
+	binary.Write(buf, BYTE_ORDER, f)
 	return t.format_encode(FLOAT, buf.Bytes())
 }
 
-func (t *transformer) format_encode(control EncodedType, payload []byte) ([]byte, error) {
+func (t *encodeTransformer) format_encode(control EncodedType, payload []byte) ([]byte, error) {
 	buf := bytes.NewBuffer([]byte{})
 	payloadLen := len(payload)
 	if payloadLen+1 > MAX_PAYLOAD_LEN {
 		return []byte{}, fmt.Errorf("payload too big")
 	}
 
-	binary.Write(buf, binary.BigEndian, int64(payloadLen))
+	binary.Write(buf, BYTE_ORDER, uint64(payloadLen))
 	buf.Write(payload)
 
 	s := buf.Bytes()

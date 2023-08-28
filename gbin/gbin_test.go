@@ -7,39 +7,70 @@ import (
 	"github.com/lspaccatrosi16/go-cli-tools/gbin"
 )
 
-type TestData struct {
-	Bar
-	a string
-	b int
-	c *map[string]int
+type StructTestData struct {
+	A string
 }
 
-type Bar struct {
-	a string
-	b string
-	d uintptr
-}
-
-func TestEncode(t *testing.T) {
-	testStruct := TestData{
-		a: "foooooooobar",
-		b: 77821124512,
-		c: &map[string]int{
-			"asdasda": 212431412,
-			"bbbbbb":  644387,
-			"ccccccc": 7677,
-		},
-	}
-
-	encoder := gbin.New_Encoder[TestData]()
-	out, err := encoder.Encode(&testStruct)
-	if err != nil {
-		fmt.Println(err.Error())
+func TestString(t *testing.T) {
+	data := "abcd"
+	if pass := runTest(data); !pass {
 		t.Fail()
-	} else {
+	}
+}
 
-		fmt.Printf("% x \n", out)
-		fmt.Printf("%s \n", []byte(out))
+func TestInt(t *testing.T) {
+	data := int64(622711)
+	if pass := runTest(data); !pass {
+		t.Fail()
+	}
+}
+
+func TestFloat(t *testing.T) {
+	data := 1541523.21231
+	if pass := runTest(data); !pass {
+		t.Fail()
+	}
+}
+
+func TestBool(t *testing.T) {
+	data := true
+	if pass := runTest(data); !pass {
+		t.Fail()
+	}
+}
+
+func TestStruct(t *testing.T) {
+	testStruct := StructTestData{
+		A: "Hi there",
+	}
+	if pass := runTest(testStruct); !pass {
+		t.Fail()
+	}
+}
+
+func runTest[T any](data T) bool {
+	encoder := gbin.NewEncoder[T]()
+	decoder := gbin.NewDecoder[T]()
+	encoded, err := encoder.Encode(&data)
+	if err != nil {
+		fmt.Println("ENCODE ERROR:")
+		fmt.Println(err)
+		return false
 	}
 
+	fmt.Printf("% x\n", encoded)
+
+	decoded, err := decoder.Decode(encoded)
+	if err != nil {
+		fmt.Println("DECODE ERROR:")
+		fmt.Println(err)
+		return false
+	}
+
+	fmt.Println("ORIGINAL")
+	fmt.Printf("%#v\n", data)
+	fmt.Println("DECODED")
+	fmt.Printf("%#v\n", *decoded)
+
+	return true
 }
