@@ -1,7 +1,10 @@
 package gcloud
 
 import (
-	"firebase.google.com/go/auth"
+	"crypto/rand"
+	"math"
+
+	"firebase.google.com/go/v4/auth"
 	"google.golang.org/api/iterator"
 )
 
@@ -45,17 +48,46 @@ func (a *AuthClient) GetUsers() (UserRecords, error) {
 	return &userList, nil
 }
 
+func (a *AuthClient) GenerateTemporaryPassword(pLen int) (string, error) {
+	const letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+
+	bytes := make([]byte, pLen)
+	_, err := rand.Read(bytes)
+
+	if err != nil {
+		return "", err
+	}
+
+	randomString := make([]byte, pLen)
+	letterLen := float64(len(letters))
+
+	for i, b := range bytes {
+		ratio := float64(b) / float64(math.MaxUint8)
+		letterIdx := int(math.Floor(ratio * letterLen))
+
+		if letterIdx+1 >= len(letters) {
+			letterIdx = len(letters) - 1
+		} else if letterIdx < 0 {
+			letterIdx = 0
+		}
+
+		randomString[i] = letters[letterIdx]
+	}
+
+	return string(randomString), nil
+}
+
 func NewFirebaseAuth() (*AuthClient, error) {
 	app, err := getFirebase()
 
 	if err != nil {
-		return nil, wrap(err)
+		return nil, wrapAuth(err)
 	}
 
 	client, err := app.app.Auth(app.ctx)
 
 	if err != nil {
-		return nil, wrap(err)
+		return nil, wrapAuth(err)
 	}
 
 	aClient := AuthClient{
@@ -64,5 +96,4 @@ func NewFirebaseAuth() (*AuthClient, error) {
 	}
 
 	return &aClient, nil
-
 }

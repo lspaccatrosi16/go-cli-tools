@@ -7,7 +7,7 @@ import (
 	"time"
 
 	s2 "cloud.google.com/go/storage"
-	s1 "firebase.google.com/go/storage"
+	s1 "firebase.google.com/go/v4/storage"
 	"google.golang.org/api/iterator"
 )
 
@@ -22,7 +22,7 @@ func (b *Bucket) GetFile(key string) ([]byte, error) {
 	rc, err := b.Bucket.Object(key).NewReader(b.ctx)
 
 	if err != nil {
-		return []byte{}, wrap(err)
+		return []byte{}, wrapStorage(err)
 	}
 
 	io.Copy(buffer, rc)
@@ -30,7 +30,7 @@ func (b *Bucket) GetFile(key string) ([]byte, error) {
 	err = rc.Close()
 
 	if err != nil {
-		return []byte{}, wrap(err)
+		return []byte{}, wrapStorage(err)
 	}
 
 	return buffer.Bytes(), nil
@@ -46,7 +46,7 @@ func (b *Bucket) UploadFile(key string, contents []byte) error {
 	err := wc.Close()
 
 	if err != nil {
-		return wrap(err)
+		return wrapStorage(err)
 	}
 	return nil
 }
@@ -57,7 +57,7 @@ func (b *Bucket) DeleteFile(key string) error {
 	err := obj.Delete(b.ctx)
 
 	if err != nil {
-		return wrap(err)
+		return wrapStorage(err)
 	}
 
 	return nil
@@ -76,7 +76,7 @@ func (b *Bucket) ListKeys() ([]string, error) {
 		}
 
 		if err != nil {
-			return keys, wrap(err)
+			return keys, wrapStorage(err)
 		}
 
 		keys = append(keys, object.Name)
@@ -95,7 +95,7 @@ func (b *Bucket) GetTemporaryUrl(key string, expiry int) (string, error) {
 	u, err := b.Bucket.SignedURL(key, &signOpts)
 
 	if err != nil {
-		return "", wrap(err)
+		return "", wrapStorage(err)
 	}
 
 	return u, nil
@@ -114,7 +114,7 @@ func (s *GStorageClient) GetBucket(name string) (*Bucket, error) {
 	bucket, err := s.Client.Bucket(name)
 
 	if err != nil {
-		return nil, wrap(err)
+		return nil, wrapStorage(err)
 	}
 
 	return &Bucket{
@@ -127,13 +127,13 @@ func NewGStorage() (*GStorageClient, error) {
 	app, err := getFirebase()
 
 	if err != nil {
-		return nil, wrap(err)
+		return nil, wrapStorage(err)
 	}
 
 	client, err := app.app.Storage(app.ctx)
 
 	if err != nil {
-		return nil, wrap(err)
+		return nil, wrapStorage(err)
 	}
 
 	sClient := GStorageClient{

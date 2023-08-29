@@ -4,7 +4,7 @@ import (
 	"context"
 	_ "embed"
 
-	firebase "firebase.google.com/go"
+	firebase "firebase.google.com/go/v4"
 	"github.com/lspaccatrosi16/go-cli-tools/pkgError"
 	"google.golang.org/api/option"
 )
@@ -19,6 +19,11 @@ type FirebaseApp struct {
 var app *FirebaseApp
 
 var wrap = pkgError.WrapErrorFactory("gcloud")
+var wrapAuth = pkgError.WrapErrorFactory("gcloud/auth")
+var wrapFirestore = pkgError.WrapErrorFactory("gcloud/firestore")
+var wrapMessaging = pkgError.WrapErrorFactory("gcloud/messaging")
+var wrapRTDB = pkgError.WrapErrorFactory("gcloud/rtdb")
+var wrapStorage = pkgError.WrapErrorFactory("gcloud/storage")
 var errorf = pkgError.ErrorfFactory("gcloud")
 
 func RegisterServiceAccount(json []byte) {
