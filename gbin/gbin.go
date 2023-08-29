@@ -46,6 +46,12 @@ func (e *Encoder[T]) Encode(data *T) ([]byte, error) {
 
 func (e *Encoder[T]) EncodeStream(data *T) (io.Reader, error) {
 	tf := newEncodeTransformer()
+	defer func() {
+		err := recover()
+		fmt.Println("TRACE:")
+		fmt.Println(tf.trace())
+		panic(err)
+	}()
 	value := reflect.ValueOf(*data)
 	encoded, err := tf.encode(value)
 	buf := bytes.NewBuffer(encoded)
@@ -75,6 +81,12 @@ func (d *Decoder[T]) DecodeStream(data io.Reader) (*T, error) {
 	buf := bytes.NewBuffer([]byte{})
 	io.Copy(buf, data)
 	tf := newDecodeTransformer(*buf)
+	defer func() {
+		err := recover()
+		fmt.Println("TRACE:")
+		fmt.Println(tf.trace())
+		panic(err)
+	}()
 	val, err := tf.decode()
 	if err != nil {
 		return nil, wrapDecode(addStack(err, tf.trace()))
