@@ -27,6 +27,10 @@ func NewEncoder[T any]() *Encoder[T] {
 	if runtime.GOARCH != "amd64" {
 		panic("only supports 64-bit architectures currently")
 	}
+	if !reflect.ValueOf(*new(T)).IsValid() {
+		panic("type parameter must not be an interface{}")
+	}
+
 	return &Encoder[T]{}
 }
 
@@ -55,6 +59,10 @@ func NewDecoder[T any]() *Decoder[T] {
 	if runtime.GOARCH != "amd64" {
 		panic("only supports 64-bit architectures currently")
 	}
+	if !reflect.ValueOf(*new(T)).IsValid() {
+		panic("type parameter must not be an interface{}")
+	}
+
 	return &Decoder[T]{}
 }
 

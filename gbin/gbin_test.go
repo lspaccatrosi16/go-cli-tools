@@ -80,15 +80,8 @@ func TestStruct(t *testing.T) {
 	}
 }
 
-func TestError(t *testing.T) {
-	testData := map[string]struct {
-		A string
-		B interface{}
-	}{
-		"a": {A: "ma", B: 67},
-		"b": {A: "foo", B: "bar"},
-	}
-	if pass := runTest(testData); pass {
+func TestInterface(t *testing.T) {
+	if pass := runTest(struct{ A interface{} }{A: "aaa"}); !pass {
 		t.Fail()
 	}
 }

@@ -50,7 +50,7 @@ func getNewCredentials(appName string) (credential, error) {
 		return *new(credential), wrap(err)
 	}
 
-	config.WriteConfigFile[credential](credPath, userCred)
+	config.WriteConfigFile(credPath, userCred)
 
 	return userCred, nil
 }

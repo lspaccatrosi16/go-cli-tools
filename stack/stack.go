@@ -26,3 +26,7 @@ func (s *Stack[T]) Reverse() {
 	}
 	s.stack = newStack
 }
+
+func (s *Stack[T]) Inner() []T {
+	return s.stack
+}

@@ -18,7 +18,7 @@ func newEncodeTransformer() *encodeTransformer {
 }
 
 func (t *encodeTransformer) trace() string {
-	buf := bytes.NewBufferString("")
+	buf := bytes.NewBufferString("/")
 	t.stack.Reverse()
 	for {
 		val, ok := t.stack.Pop()
@@ -47,6 +47,8 @@ PAYLOAD
 
 func (t *encodeTransformer) encode(v reflect.Value) ([]byte, error) {
 	switch v.Kind() {
+	case reflect.Interface:
+		return t.encode_interface(v)
 	case reflect.Map:
 		return t.encode_map(v)
 	case reflect.Struct:
@@ -66,6 +68,21 @@ func (t *encodeTransformer) encode(v reflect.Value) ([]byte, error) {
 	default:
 		return []byte{}, fmt.Errorf("type %s is not currently supported for serialization", v.Kind())
 	}
+}
+
+func (t *encodeTransformer) encode_interface(i reflect.Value) ([]byte, error) {
+	it := i.Type()
+	stackEntry := fmt.Sprintf("interface(%s)", it.Name())
+	buf := bytes.NewBuffer([]byte{})
+	t.stack.Push(stackEntry)
+	innerVal := i.Elem()
+	encoded, err := t.encode(innerVal)
+	if err != nil {
+		return []byte{}, err
+	}
+	t.stack.Pop()
+	buf.Write(encoded)
+	return t.format_encode(INTERFACE, buf.Bytes())
 }
 
 //PAYLOAD: ENCODED, ENCODED

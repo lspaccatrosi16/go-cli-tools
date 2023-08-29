@@ -111,7 +111,7 @@ func ReadCloudConfigFile[T any](bucket storage.StorageProvider, key string) (T, 
 }
 
 func WriteConfigFile[T any](path string, config T) error {
-	reader, err := encodeConfigFile[T](config)
+	reader, err := encodeConfigFile(config)
 
 	if err != nil {
 		return wrap(err)
@@ -131,7 +131,7 @@ func WriteConfigFile[T any](path string, config T) error {
 }
 
 func WritCloudConfigFile[T any](bucket storage.StorageProvider, key string, config T) error {
-	reader, err := encodeConfigFile[T](config)
+	reader, err := encodeConfigFile(config)
 
 	if err != nil {
 		return wrap(err)

@@ -21,7 +21,7 @@ func newDecodeTransformer(buf bytes.Buffer) *decodeTransformer {
 }
 
 func (t *decodeTransformer) trace() string {
-	buf := bytes.NewBufferString("")
+	buf := bytes.NewBufferString("/")
 	t.stack.Reverse()
 	for {
 		val, ok := t.stack.Pop()
@@ -45,6 +45,8 @@ func (t *decodeTransformer) decode() (*reflect.Value, error) {
 	payloadLenArr = append(payloadLenArr, payloadLenBuff.Bytes()...)
 	payloadLen := binary.BigEndian.Uint64(payloadLenArr)
 	switch EncodedType(control) {
+	case INTERFACE:
+		return t.decode_interface(payloadLen)
 	case MAP:
 		return t.decode_map(payloadLen)
 	case STRUCT:
@@ -64,6 +66,28 @@ func (t *decodeTransformer) decode() (*reflect.Value, error) {
 	default:
 		return nil, fmt.Errorf("encoding error: unknown type code 0x%x", control)
 	}
+}
+
+//why is this necessary to trick it into making an interface for me?
+func iface() []interface{} {
+	return []interface{}{struct{}{}, "a"}
+}
+
+func (t *decodeTransformer) decode_interface(stop uint64) (*reflect.Value, error) {
+	t.stack.Push("interface")
+	buf, err := t.readN(stop)
+	if err != nil {
+		return nil, err
+	}
+	dec := newDecodeTransformer(*buf)
+	inner, err := dec.decode()
+	if err != nil {
+		return nil, err
+	}
+	outer := inner.Convert(reflect.TypeOf(iface()).Elem())
+	t.stack.Pop()
+
+	return &outer, nil
 }
 
 func (t *decodeTransformer) decode_map(stop uint64) (*reflect.Value, error) {
@@ -183,14 +207,14 @@ func (t *decodeTransformer) decode_ptr(stop uint64) (*reflect.Value, error) {
 
 func (t *decodeTransformer) decode_slice(stop uint64) (*reflect.Value, error) {
 	t.stack.Push("slice")
-	var nilSlice []any
-	slice := reflect.New(reflect.TypeOf(nilSlice)).Elem()
 	buf, err := t.readN(stop)
 	if err != nil {
 		return nil, err
 	}
 	dec := newDecodeTransformer(*buf)
 	count := 0
+	vals := []*reflect.Value{}
+	var sliceType *reflect.Type
 	for {
 		if dec.data.Len() == 0 {
 			break
@@ -200,9 +224,21 @@ func (t *decodeTransformer) decode_slice(stop uint64) (*reflect.Value, error) {
 		if err != nil {
 			return nil, err
 		}
+		if sliceType == nil {
+			sT := val.Type()
+			sliceType = &sT
+		} else {
+			if val.Kind() != (*sliceType).Kind() {
+				return nil, fmt.Errorf("slice key types must be consistent (found %s but expected %s)", val.Kind(), (*sliceType).Kind())
+			}
+		}
 		t.stack.Pop()
-		slice = reflect.Append(slice, *val)
+		vals = append(vals, val)
 		count++
+	}
+	slice := reflect.New(reflect.SliceOf(*sliceType)).Elem()
+	for _, val := range vals {
+		slice = reflect.Append(slice, *val)
 	}
 	t.stack.Pop()
 	return &slice, nil

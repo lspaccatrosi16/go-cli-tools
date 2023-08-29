@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/lspaccatrosi16/go-cli-tools/set"
 	"github.com/lspaccatrosi16/go-cli-tools/stack"
 )
 
@@ -17,7 +18,7 @@ func newAssigner[T any]() *assigner[T] {
 }
 
 func (a *assigner[T]) trace() string {
-	buf := bytes.NewBufferString("")
+	buf := bytes.NewBufferString("/")
 	a.stack.Reverse()
 	for {
 		val, ok := a.stack.Pop()
@@ -40,35 +41,35 @@ func (a *assigner[T]) assign(decoded *reflect.Value) (*T, error) {
 	return &converted, nil
 }
 
+func scalars() *set.Set[reflect.Kind] {
+	sc := set.NewSet[reflect.Kind]()
+	sc.Add(reflect.String, reflect.Bool, reflect.Int, reflect.Int64, reflect.Float64)
+	return sc
+}
+
 func (a *assigner[T]) visit(ref reflect.Type, decoded *reflect.Value) (*reflect.Value, error) {
-	if decoded.Kind() == reflect.Interface {
-		val := decoded.Elem()
-		return a.visit(ref, &val)
-	}
 	if !a.matches(ref, decoded) {
 		return nil, fmt.Errorf("type %s does not match reference type of %s", decoded.Kind(), ref.Kind())
 	}
 	var visited *reflect.Value
 	var visitError error
-	switch ref.Kind() {
-	case reflect.Map:
-		visited, visitError = a.visit_map(ref, decoded)
-	case reflect.Struct:
-		visited, visitError = a.visit_struct(ref, decoded)
-	case reflect.Pointer:
-		visited, visitError = a.visit_ptr(ref, decoded)
-	case reflect.Slice:
-		visited, visitError = a.visit_slice(ref, decoded)
-	case reflect.String:
+	if scalars().Contains(ref.Kind()) {
 		visited, visitError = a.visit_scalar(ref, decoded)
-	case reflect.Bool:
-		visited, visitError = a.visit_scalar(ref, decoded)
-	case reflect.Int, reflect.Int64:
-		visited, visitError = a.visit_scalar(ref, decoded)
-	case reflect.Float64:
-		visited, visitError = a.visit_scalar(ref, decoded)
-	default:
-		return nil, fmt.Errorf("type: %s is not currently supported for serialization", ref.Kind())
+	} else {
+		switch ref.Kind() {
+		case reflect.Interface:
+			visited, visitError = a.visit_interface(ref, decoded)
+		case reflect.Map:
+			visited, visitError = a.visit_map(ref, decoded)
+		case reflect.Struct:
+			visited, visitError = a.visit_struct(ref, decoded)
+		case reflect.Pointer:
+			visited, visitError = a.visit_ptr(ref, decoded)
+		case reflect.Slice:
+			visited, visitError = a.visit_slice(ref, decoded)
+		default:
+			return nil, fmt.Errorf("type: %s is not currently supported for serialization", ref.Kind())
+		}
 	}
 	if visitError != nil {
 		return nil, visitError
@@ -76,6 +77,19 @@ func (a *assigner[T]) visit(ref reflect.Type, decoded *reflect.Value) (*reflect.
 		return nil, fmt.Errorf("visited value is nil")
 	}
 	return visited, nil
+}
+
+func (a *assigner[T]) visit_interface(ref reflect.Type, decoded *reflect.Value) (*reflect.Value, error) {
+	decInner := decoded.Elem()
+	a.stack.Push("interface")
+	visited, err := a.visit(decInner.Type(), &decInner)
+	if err != nil {
+		return nil, err
+	}
+	outer := reflect.New(reflect.TypeOf(visited.Interface())).Elem()
+	outer.Set(*visited)
+	a.stack.Pop()
+	return &outer, nil
 }
 
 func (a *assigner[T]) visit_map(ref reflect.Type, decoded *reflect.Value) (*reflect.Value, error) {
