@@ -15,6 +15,9 @@ func (e *packageError) Error() string {
 }
 
 func WrapError(pkg string, err error) error {
+	if err == nil {
+		return nil
+	}
 	if e, ok := err.(*packageError); ok {
 		return e
 	}

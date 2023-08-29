@@ -5,16 +5,34 @@ import (
 	"encoding/binary"
 	"fmt"
 	"reflect"
+
+	"github.com/lspaccatrosi16/go-cli-tools/stack"
 )
 
 type decodeTransformer struct {
-	data *bytes.Buffer
+	data  *bytes.Buffer
+	stack stack.Stack[string]
 }
 
 func newDecodeTransformer(buf bytes.Buffer) *decodeTransformer {
 	return &decodeTransformer{
 		data: &buf,
 	}
+}
+
+func (t *decodeTransformer) trace() string {
+	buf := bytes.NewBufferString("")
+	t.stack.Reverse()
+	for {
+		val, ok := t.stack.Pop()
+		if !ok {
+			break
+		}
+		formatted := fmt.Sprintf("%s/", val)
+		buf.WriteString(formatted)
+	}
+
+	return buf.String()
 }
 
 func (t *decodeTransformer) decode() (*reflect.Value, error) {
@@ -49,6 +67,7 @@ func (t *decodeTransformer) decode() (*reflect.Value, error) {
 }
 
 func (t *decodeTransformer) decode_map(stop uint64) (*reflect.Value, error) {
+	t.stack.Push("map")
 	buf, err := t.readN(stop)
 	if err != nil {
 		return nil, err
@@ -57,32 +76,38 @@ func (t *decodeTransformer) decode_map(stop uint64) (*reflect.Value, error) {
 	var kType, vType *reflect.Type
 	keyArr := []*reflect.Value{}
 	valArr := []*reflect.Value{}
+	count := 0
 	for {
 		if dec.data.Len() == 0 {
 			break
 		}
+		t.stack.Push(fmt.Sprintf("key%d", count))
 		k, err := dec.decode()
 		if err != nil {
 			return nil, err
 		}
+		t.stack.Pop()
+		t.stack.Push(fmt.Sprintf("%v", k.Interface()))
 		v, err := dec.decode()
 		if err != nil {
 			return nil, err
 		}
+		t.stack.Pop()
 		if kType == nil && vType == nil {
 			kT := k.Type()
 			kType = &kT
 			vT := v.Type()
 			vType = &vT
 		} else {
-			if k.Type().Kind() != k.Type().Kind() {
-				return nil, fmt.Errorf("map key types must be consistent")
-			} else if v.Type().Kind() != v.Type().Kind() {
+			if k.Kind() != (*kType).Kind() {
+				return nil, fmt.Errorf("map key types must be consistent (found %s but expected %s)", k.Kind(), (*kType).Kind())
+			} else if v.Kind() != (*vType).Kind() {
 				return nil, fmt.Errorf("maps to interfaces are not supported")
 			}
 		}
 		keyArr = append(keyArr, k)
 		valArr = append(valArr, v)
+		count++
 	}
 	mapType := reflect.MapOf(*kType, *vType)
 	m := reflect.MakeMap(mapType)
@@ -90,10 +115,12 @@ func (t *decodeTransformer) decode_map(stop uint64) (*reflect.Value, error) {
 		v := valArr[i]
 		m.SetMapIndex(*k, *v)
 	}
+	t.stack.Pop()
 	return &m, nil
 }
 
 func (t *decodeTransformer) decode_struct(stop uint64) (*reflect.Value, error) {
+	t.stack.Push("struct")
 	buf, err := t.readN(stop)
 	if err != nil {
 		return nil, err
@@ -101,10 +128,12 @@ func (t *decodeTransformer) decode_struct(stop uint64) (*reflect.Value, error) {
 	fields := []reflect.StructField{}
 	kvMap := map[string]*reflect.Value{}
 	dec := newDecodeTransformer(*buf)
+	count := 0
 	for {
 		if dec.data.Len() == 0 {
 			break
 		}
+		t.stack.Push(fmt.Sprintf("key%d", count))
 		key, err := dec.decode()
 		if err != nil {
 			return nil, err
@@ -112,10 +141,13 @@ func (t *decodeTransformer) decode_struct(stop uint64) (*reflect.Value, error) {
 		if key.Kind() != reflect.String {
 			return nil, fmt.Errorf("encoded struct key must be of type string, not %s", key.Kind())
 		}
+		t.stack.Pop()
+		t.stack.Push(fmt.Sprintf("%v", key.String()))
 		val, err := dec.decode()
 		if err != nil {
 			return nil, err
 		}
+		t.stack.Pop()
 		field := reflect.StructField{
 			Name: key.String(),
 			Type: val.Type(),
@@ -123,15 +155,18 @@ func (t *decodeTransformer) decode_struct(stop uint64) (*reflect.Value, error) {
 		fields = append(fields, field)
 		kvMap[key.String()] = val
 	}
+	count++
 	strType := reflect.StructOf(fields)
 	str := reflect.New(strType).Elem()
 	for k, v := range kvMap {
 		str.FieldByName(k).Set(*v)
 	}
+	t.stack.Pop()
 	return &str, nil
 }
 
 func (t *decodeTransformer) decode_ptr(stop uint64) (*reflect.Value, error) {
+	t.stack.Push("ptr")
 	buf, err := t.readN(stop)
 	if err != nil {
 		return nil, err
@@ -142,10 +177,12 @@ func (t *decodeTransformer) decode_ptr(stop uint64) (*reflect.Value, error) {
 		return nil, err
 	}
 	outer := inner.Addr()
+	t.stack.Pop()
 	return &outer, nil
 }
 
 func (t *decodeTransformer) decode_slice(stop uint64) (*reflect.Value, error) {
+	t.stack.Push("slice")
 	var nilSlice []any
 	slice := reflect.New(reflect.TypeOf(nilSlice)).Elem()
 	buf, err := t.readN(stop)
@@ -153,20 +190,26 @@ func (t *decodeTransformer) decode_slice(stop uint64) (*reflect.Value, error) {
 		return nil, err
 	}
 	dec := newDecodeTransformer(*buf)
+	count := 0
 	for {
 		if dec.data.Len() == 0 {
 			break
 		}
+		t.stack.Push(fmt.Sprintf("el%d", count))
 		val, err := dec.decode()
 		if err != nil {
 			return nil, err
 		}
+		t.stack.Pop()
 		slice = reflect.Append(slice, *val)
+		count++
 	}
+	t.stack.Pop()
 	return &slice, nil
 }
 
 func (t *decodeTransformer) decode_string(stop uint64) (*reflect.Value, error) {
+	t.stack.Push("string")
 	buf, err := t.readN(stop)
 	if err != nil {
 		return nil, err
@@ -175,11 +218,12 @@ func (t *decodeTransformer) decode_string(stop uint64) (*reflect.Value, error) {
 
 	val := reflect.New(reflect.TypeOf(str)).Elem()
 	val.SetString(str)
+	t.stack.Pop()
 	return &val, nil
-
 }
 
 func (t *decodeTransformer) decode_bool(stop uint64) (*reflect.Value, error) {
+	t.stack.Push("bool")
 	buf, err := t.readN(stop)
 	if err != nil {
 		return nil, err
@@ -191,10 +235,12 @@ func (t *decodeTransformer) decode_bool(stop uint64) (*reflect.Value, error) {
 	}
 	val := reflect.New(reflect.TypeOf(bVal)).Elem()
 	val.SetBool(bVal)
+	t.stack.Pop()
 	return &val, nil
 }
 
 func (t *decodeTransformer) decode_int(stop uint64) (*reflect.Value, error) {
+	t.stack.Push("int64")
 	buf, err := t.readN(stop)
 	if err != nil {
 		return nil, err
@@ -206,10 +252,12 @@ func (t *decodeTransformer) decode_int(stop uint64) (*reflect.Value, error) {
 	}
 	val := reflect.New(reflect.TypeOf(iVal)).Elem()
 	val.SetInt(iVal)
+	t.stack.Pop()
 	return &val, nil
 }
 
 func (t *decodeTransformer) decode_float(stop uint64) (*reflect.Value, error) {
+	t.stack.Push("float64")
 	buf, err := t.readN(stop)
 	if err != nil {
 		return nil, err
@@ -221,6 +269,7 @@ func (t *decodeTransformer) decode_float(stop uint64) (*reflect.Value, error) {
 	}
 	val := reflect.New(reflect.TypeOf(fVal)).Elem()
 	val.SetFloat(fVal)
+	t.stack.Pop()
 	return &val, nil
 }
 

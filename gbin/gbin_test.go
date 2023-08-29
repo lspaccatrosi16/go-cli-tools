@@ -80,6 +80,19 @@ func TestStruct(t *testing.T) {
 	}
 }
 
+func TestError(t *testing.T) {
+	testData := map[string]struct {
+		A string
+		B interface{}
+	}{
+		"a": {A: "ma", B: 67},
+		"b": {A: "foo", B: "bar"},
+	}
+	if pass := runTest(testData); pass {
+		t.Fail()
+	}
+}
+
 func runTest[T any](data T) bool {
 	encoder := gbin.NewEncoder[T]()
 	decoder := gbin.NewDecoder[T]()
