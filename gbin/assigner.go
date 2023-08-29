@@ -8,124 +8,144 @@ import (
 type assigner[T any] struct {
 }
 
+func newAssigner[T any]() *assigner[T] {
+	return &assigner[T]{}
+}
+
 type PreMap = map[reflect.Kind]int
 
-var floatPrecedence PreMap = PreMap{
-	reflect.Float32: 0,
-	reflect.Float64: 1,
-}
-
-var intPrecedence PreMap = PreMap{
-	reflect.Int8:   0,
-	reflect.Uint8:  1,
-	reflect.Int16:  1,
-	reflect.Uint16: 2,
-	reflect.Int32:  2,
-	reflect.Uint32: 3,
-	reflect.Int64:  3,
-	reflect.Int:    3,
-	reflect.Uint64: 4,
-	reflect.Uint:   4,
-}
-
 func (a *assigner[T]) assign(decoded *reflect.Value) (*T, error) {
-	refVal := reflect.ValueOf(*new(T))
-	err := a.visit(&refVal, decoded)
+	refType := reflect.TypeOf(*new(T))
+	assigned, err := a.visit(refType, decoded)
 	if err != nil {
 		return nil, err
 	}
-	assigned := refVal.Interface().(T)
-	return &assigned, nil
+	converted := assigned.Interface().(T)
+	return &converted, nil
 }
 
-func (a *assigner[T]) visit(ref *reflect.Value, decoded *reflect.Value) error {
-	// if !a.matches(ref, decoded) {
-	// 	return fmt.Errorf("expected type %s but got type %s", ref.Kind(), decoded.Kind())
-	// }
-
+func (a *assigner[T]) visit(ref reflect.Type, decoded *reflect.Value) (*reflect.Value, error) {
+	if decoded.Kind() == reflect.Interface {
+		val := decoded.Elem()
+		return a.visit(ref, &val)
+	}
+	if !a.matches(ref, decoded) {
+		return nil, fmt.Errorf("type %s does not match reference type of %s", decoded.Kind(), ref.Kind())
+	}
+	var visited *reflect.Value
+	var visitError error
 	switch ref.Kind() {
 	case reflect.Map:
-		return a.visit_map(ref, decoded)
+		visited, visitError = a.visit_map(ref, decoded)
 	case reflect.Struct:
-		return a.visit_struct(ref, decoded)
-
+		visited, visitError = a.visit_struct(ref, decoded)
 	case reflect.Pointer:
-		return a.visit_ptr(ref, decoded)
-
+		visited, visitError = a.visit_ptr(ref, decoded)
 	case reflect.Slice:
-		return a.visit_slice(ref, decoded)
-
+		visited, visitError = a.visit_slice(ref, decoded)
 	case reflect.String:
-		return a.visit_string(ref, decoded)
+		visited, visitError = a.visit_scalar(ref, decoded)
 	case reflect.Bool:
-		return a.visit_bool(ref, decoded)
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return a.visit_float(ref, decoded)
+		visited, visitError = a.visit_scalar(ref, decoded)
+	case reflect.Int, reflect.Int64:
+		visited, visitError = a.visit_scalar(ref, decoded)
+	case reflect.Float64:
+		visited, visitError = a.visit_scalar(ref, decoded)
 	default:
-		return fmt.Errorf("type: %s is not currently supported for serialization", ref.Kind())
+		return nil, fmt.Errorf("type: %s is not currently supported for serialization", ref.Kind())
 	}
-}
-
-func (a *assigner[T]) visit_map(ref *reflect.Value, decoded *reflect.Value) error {
-
-	return nil
-}
-
-func (a *assigner[T]) visit_struct(ref *reflect.Value, decoded *reflect.Value) error {
-
-	return nil
-}
-
-func (a *assigner[T]) visit_ptr(ref *reflect.Value, decoded *reflect.Value) error {
-
-	return nil
-}
-
-func (a *assigner[T]) visit_slice(ref *reflect.Value, decoded *reflect.Value) error {
-	return nil
-
-}
-
-func (a *assigner[T]) visit_string(ref *reflect.Value, decoded *reflect.Value) error {
-	return nil
-
-}
-
-func (a *assigner[T]) visit_bool(ref *reflect.Value, decoded *reflect.Value) error {
-	return nil
-
-}
-
-func (a *assigner[T]) visit_int(ref *reflect.Value, decoded *reflect.Value) error {
-	refPrec := intPrecedence[ref.Kind()]
-	decPrec, ok := intPrecedence[decoded.Kind()]
-	if !ok {
-		return fmt.Errorf("type %s is not compatable with reference type %s", decoded.Kind(), ref.Kind())
+	if visitError != nil {
+		return nil, visitError
+	} else if visited == nil {
+		return nil, fmt.Errorf("visited value is nil")
 	}
-	if refPrec >= decPrec {
-		val := decoded.Convert(ref.Type())
-		ref.Set(val)
-		return nil
-	} else {
-		return fmt.Errorf("cannot safely convert parsed type %s to reference type %s", decoded.Kind(), ref.Kind())
-	}
+	return visited, nil
 }
 
-func (a *assigner[T]) visit_float(ref *reflect.Value, decoded *reflect.Value) error {
-	refPrec := floatPrecedence[ref.Kind()]
-	decPrec, ok := floatPrecedence[decoded.Kind()]
-	if !ok {
-		return fmt.Errorf("type %s is not compatable with reference type %s", decoded.Kind(), ref.Kind())
+func (a *assigner[T]) visit_map(ref reflect.Type, decoded *reflect.Value) (*reflect.Value, error) {
+	keyType := ref.Key()
+	valType := ref.Elem()
+	iter := decoded.MapRange()
+	newMap := reflect.MakeMap(ref)
+	for {
+		if !iter.Next() {
+			break
+		}
+		k := iter.Key()
+		kVisited, err := a.visit(keyType, &k)
+		if err != nil {
+			return nil, err
+		}
+		v := iter.Value()
+		vVisited, err := a.visit(valType, &v)
+		if err != nil {
+			return nil, err
+		}
+		newMap.SetMapIndex(*kVisited, *vVisited)
 	}
-	if refPrec >= decPrec {
-		val := decoded.Float()
-		ref.SetFloat(val)
-		return nil
-	} else {
-		return fmt.Errorf("cannot safely convert parsed type %s to reference type %s", decoded.Kind(), ref.Kind())
-	}
+	return &newMap, nil
 }
 
-func (a *assigner[T]) matches(x *reflect.Value, y *reflect.Value) bool {
-	return (*x).Kind() == (*y).Kind()
+func (a *assigner[T]) visit_struct(ref reflect.Type, decoded *reflect.Value) (*reflect.Value, error) {
+	n := decoded.NumField()
+	decType := decoded.Type()
+	newStruct := reflect.New(ref).Elem()
+	for i := 0; i < n; i++ {
+		dFieldT := decType.Field(i)
+		dFieldV := decoded.Field(i)
+		name := dFieldT.Name
+		rField, found := ref.FieldByName(name)
+		if !found {
+			return nil, fmt.Errorf("decoded struct has field of name %s but not found in reference type", name)
+		}
+		neededType := rField.Type
+		visited, vErr := a.visit(neededType, &dFieldV)
+		if vErr != nil {
+			return nil, vErr
+		}
+		newStruct.FieldByName(name).Set(*visited)
+	}
+	return &newStruct, nil
+}
+
+func (a *assigner[T]) visit_ptr(ref reflect.Type, decoded *reflect.Value) (*reflect.Value, error) {
+	refPointedAt := ref.Elem()
+	decPointedAt := decoded.Elem()
+	visited, err := a.visit(refPointedAt, &decPointedAt)
+	if err != nil {
+		return nil, err
+	}
+	ptr := visited.Addr()
+	return &ptr, nil
+}
+
+func (a *assigner[T]) visit_slice(ref reflect.Type, decoded *reflect.Value) (*reflect.Value, error) {
+	n := decoded.Len()
+	newSlice := reflect.New(ref).Elem()
+	for i := 0; i < n; i++ {
+		el := decoded.Index(i)
+		visited, err := a.visit(ref.Elem(), &el)
+		if err != nil {
+			return nil, err
+		}
+		newSlice = reflect.Append(newSlice, *visited)
+	}
+	return &newSlice, nil
+}
+
+func (a *assigner[T]) visit_scalar(ref reflect.Type, decoded *reflect.Value) (*reflect.Value, error) {
+	if !decoded.CanConvert(ref) {
+		return nil, fmt.Errorf("cannot convert type %s to %s", decoded.Kind(), ref.Kind())
+	}
+	converted := decoded.Convert(ref)
+	newVal := reflect.New(ref).Elem()
+	newVal.Set(converted)
+	return &newVal, nil
+}
+
+func (a *assigner[T]) matches(x reflect.Type, y *reflect.Value) bool {
+	if (x.Kind() == reflect.Int || x.Kind() == reflect.Int64) && ((*y).Kind() == reflect.Int || (*y).Kind() == reflect.Int64) {
+		return true
+	}
+	return x.Kind() == (*y).Kind()
 }

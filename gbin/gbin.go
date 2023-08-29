@@ -2,16 +2,18 @@ package gbin
 
 import (
 	"bytes"
-	"errors"
-	"fmt"
 	"io"
 	"reflect"
+	"runtime"
 )
 
 type Encoder[T any] struct {
 }
 
 func NewEncoder[T any]() *Encoder[T] {
+	if runtime.GOARCH != "amd64" {
+		panic("only supports 64-bit architectures currently")
+	}
 	return &Encoder[T]{}
 }
 
@@ -38,6 +40,10 @@ type Decoder[T any] struct {
 }
 
 func NewDecoder[T any]() *Decoder[T] {
+	if runtime.GOARCH != "amd64" {
+		panic("only supports 64-bit architectures currently")
+	}
+
 	return &Decoder[T]{}
 }
 
@@ -55,14 +61,13 @@ func (d *Decoder[T]) DecodeStream(data io.Reader) (*T, error) {
 		return nil, err
 	}
 
-	checked, ok := val.Interface().(T)
-	if !ok {
-		eBuff := bytes.NewBufferString("Could not convert reflected value to value\n")
-		fmt.Fprintf(eBuff, "NAME: \"%s\"\n", val.Type().Name())
-		fmt.Fprintln(eBuff, "VALUE:")
-		fmt.Fprintf(eBuff, "%#v", val.Interface())
-		return nil, errors.New(eBuff.String())
+	as := newAssigner[T]()
+
+	checked, err := as.assign(val)
+
+	if err != nil {
+		return nil, err
 	}
 
-	return &checked, nil
+	return checked, nil
 }

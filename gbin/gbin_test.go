@@ -2,14 +2,11 @@ package gbin_test
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/lspaccatrosi16/go-cli-tools/gbin"
 )
-
-type StructTestData struct {
-	A string
-}
 
 func TestString(t *testing.T) {
 	data := "abcd"
@@ -19,7 +16,7 @@ func TestString(t *testing.T) {
 }
 
 func TestInt(t *testing.T) {
-	data := int64(622711)
+	data := int(622711)
 	if pass := runTest(data); !pass {
 		t.Fail()
 	}
@@ -39,9 +36,44 @@ func TestBool(t *testing.T) {
 	}
 }
 
+func TestPtr(t *testing.T) {
+	data := "abcdefg"
+	if pass := runTest(&data); !pass {
+		t.Fail()
+	}
+}
+
+func TestSlice(t *testing.T) {
+	data := []string{"a", "b", "c", "d", "E", "f"}
+	if pass := runTest(data); !pass {
+		t.Fail()
+	}
+}
+
+func TestMap(t *testing.T) {
+	testMap := map[string]int{
+		"a": 2,
+		"b": 3,
+		"c": 4,
+	}
+	if pass := runTest(testMap); !pass {
+		t.Fail()
+	}
+}
+
 func TestStruct(t *testing.T) {
-	testStruct := StructTestData{
+	testStruct := struct {
+		A string
+		B map[string]int
+		c bool
+	}{
 		A: "Hi there",
+		B: map[string]int{
+			"1":   2,
+			"2":   3,
+			"2+2": 5,
+		},
+		c: false,
 	}
 	if pass := runTest(testStruct); !pass {
 		t.Fail()
@@ -58,19 +90,21 @@ func runTest[T any](data T) bool {
 		return false
 	}
 
-	fmt.Printf("% x\n", encoded)
-
 	decoded, err := decoder.Decode(encoded)
 	if err != nil {
+		fmt.Printf("% x\n", encoded)
 		fmt.Println("DECODE ERROR:")
 		fmt.Println(err)
 		return false
 	}
 
-	fmt.Println("ORIGINAL")
-	fmt.Printf("%#v\n", data)
-	fmt.Println("DECODED")
-	fmt.Printf("%#v\n", *decoded)
-
-	return true
+	if reflect.DeepEqual(data, *decoded) {
+		return true
+	} else {
+		fmt.Println("ORIGINAL")
+		fmt.Printf("%#v\n", data)
+		fmt.Println("DECODED")
+		fmt.Printf("%#v\n", *decoded)
+		return false
+	}
 }

@@ -41,12 +41,9 @@ func (t *encodeTransformer) encode(v reflect.Value) ([]byte, error) {
 		return t.encode_string(v.String())
 	case reflect.Bool:
 		return t.encode_bool(v.Bool())
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32:
-		ui := v.Uint()
-		return t.encode_int(int64(ui))
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+	case reflect.Int, reflect.Int64:
 		return t.encode_int(v.Int())
-	case reflect.Float32, reflect.Float64:
+	case reflect.Float64:
 		return t.encode_float(v.Float())
 	default:
 		return []byte{}, fmt.Errorf("type: %s is not currently supported for serialization", v.Kind())
@@ -60,7 +57,6 @@ func (t *encodeTransformer) encode_map(m *reflect.MapIter) ([]byte, error) {
 		if !m.Next() {
 			break
 		}
-
 		k := m.Key()
 		v := m.Value()
 		kEnc, err := t.encode(k)
@@ -75,7 +71,6 @@ func (t *encodeTransformer) encode_map(m *reflect.MapIter) ([]byte, error) {
 		buf.Write(vEnc)
 	}
 	return t.format_encode(MAP, buf.Bytes())
-
 }
 
 //PAYLOAD: STRING FIELD NAME, ENCODED VALUE

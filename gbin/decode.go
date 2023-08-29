@@ -21,14 +21,11 @@ func (t *decodeTransformer) decode() (*reflect.Value, error) {
 	if t.data.Len() < 8 {
 		return nil, fmt.Errorf("no header found")
 	}
-
 	control, _ := t.data.ReadByte()
-
 	payloadLenBuff, _ := t.readN(7)
 	payloadLenArr := []byte{0x00}
 	payloadLenArr = append(payloadLenArr, payloadLenBuff.Bytes()...)
 	payloadLen := binary.BigEndian.Uint64(payloadLenArr)
-
 	switch EncodedType(control) {
 	case MAP:
 		return t.decode_map(payloadLen)
@@ -47,12 +44,11 @@ func (t *decodeTransformer) decode() (*reflect.Value, error) {
 	case FLOAT:
 		return t.decode_float(payloadLen)
 	default:
-		return nil, fmt.Errorf("encoding error: unknown type code %b", control)
+		return nil, fmt.Errorf("encoding error: unknown type code 0x%x", control)
 	}
 }
 
 func (t *decodeTransformer) decode_map(stop uint64) (*reflect.Value, error) {
-	fmt.Println("decode map")
 	buf, err := t.readN(stop)
 	if err != nil {
 		return nil, err
@@ -89,18 +85,15 @@ func (t *decodeTransformer) decode_map(stop uint64) (*reflect.Value, error) {
 		valArr = append(valArr, v)
 	}
 	mapType := reflect.MapOf(*kType, *vType)
-	m := reflect.New(mapType).Elem()
+	m := reflect.MakeMap(mapType)
 	for i, k := range keyArr {
 		v := valArr[i]
 		m.SetMapIndex(*k, *v)
 	}
-
 	return &m, nil
 }
 
 func (t *decodeTransformer) decode_struct(stop uint64) (*reflect.Value, error) {
-	fmt.Println("decode struct")
-
 	buf, err := t.readN(stop)
 	if err != nil {
 		return nil, err
@@ -139,8 +132,6 @@ func (t *decodeTransformer) decode_struct(stop uint64) (*reflect.Value, error) {
 }
 
 func (t *decodeTransformer) decode_ptr(stop uint64) (*reflect.Value, error) {
-	fmt.Println("decode ptr")
-
 	buf, err := t.readN(stop)
 	if err != nil {
 		return nil, err
@@ -155,8 +146,6 @@ func (t *decodeTransformer) decode_ptr(stop uint64) (*reflect.Value, error) {
 }
 
 func (t *decodeTransformer) decode_slice(stop uint64) (*reflect.Value, error) {
-	fmt.Println("decode slice")
-
 	var nilSlice []any
 	slice := reflect.New(reflect.TypeOf(nilSlice)).Elem()
 	buf, err := t.readN(stop)
@@ -172,7 +161,7 @@ func (t *decodeTransformer) decode_slice(stop uint64) (*reflect.Value, error) {
 		if err != nil {
 			return nil, err
 		}
-		reflect.Append(slice, *val)
+		slice = reflect.Append(slice, *val)
 	}
 	return &slice, nil
 }
@@ -191,8 +180,6 @@ func (t *decodeTransformer) decode_string(stop uint64) (*reflect.Value, error) {
 }
 
 func (t *decodeTransformer) decode_bool(stop uint64) (*reflect.Value, error) {
-	fmt.Println("decode bool")
-
 	buf, err := t.readN(stop)
 	if err != nil {
 		return nil, err
@@ -208,8 +195,6 @@ func (t *decodeTransformer) decode_bool(stop uint64) (*reflect.Value, error) {
 }
 
 func (t *decodeTransformer) decode_int(stop uint64) (*reflect.Value, error) {
-	fmt.Println("decode int")
-
 	buf, err := t.readN(stop)
 	if err != nil {
 		return nil, err
@@ -225,8 +210,6 @@ func (t *decodeTransformer) decode_int(stop uint64) (*reflect.Value, error) {
 }
 
 func (t *decodeTransformer) decode_float(stop uint64) (*reflect.Value, error) {
-	fmt.Println("decode float")
-
 	buf, err := t.readN(stop)
 	if err != nil {
 		return nil, err
