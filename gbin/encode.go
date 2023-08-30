@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"math/bits"
 	"reflect"
 
 	"github.com/lspaccatrosi16/go-cli-tools/stack"
@@ -32,19 +33,6 @@ func (t *encodeTransformer) trace() string {
 	return buf.String()
 }
 
-/*
-GENERAL SPECIFICATION
-======================================================================================
-
-HEADER:
-CONTROL CODE: 1 BYTE
-
-(treat as UINT64)
-PAYLOAD LENGTH: 7 BYTES
-
-PAYLOAD
-*/
-
 func (t *encodeTransformer) encode(v reflect.Value) ([]byte, error) {
 	switch v.Kind() {
 	case reflect.Interface:
@@ -61,10 +49,18 @@ func (t *encodeTransformer) encode(v reflect.Value) ([]byte, error) {
 		return t.encode_string(v.String())
 	case reflect.Bool:
 		return t.encode_bool(v.Bool())
-	case reflect.Int, reflect.Int64:
-		return t.encode_int(v.Int())
+	case reflect.Int:
+		return t.encode_int(int(v.Int()))
+	case reflect.Int64:
+		return t.encode_int64(v.Int())
+	case reflect.Uint:
+		return t.encode_uint(uint(v.Uint()))
+	case reflect.Uint64:
+		return t.encode_uint64(v.Uint())
+	case reflect.Uint8:
+		return t.encode_uint8(uint8(v.Uint()))
 	case reflect.Float64:
-		return t.encode_float(v.Float())
+		return t.encode_float64(v.Float())
 	default:
 		return []byte{}, fmt.Errorf("type %s is not currently supported for serialization", v.Kind())
 	}
@@ -207,40 +203,100 @@ func (t *encodeTransformer) encode_string(s string) ([]byte, error) {
 func (t *encodeTransformer) encode_bool(b bool) ([]byte, error) {
 	t.stack.Push("bool")
 	buf := bytes.NewBuffer([]byte{})
-	binary.Write(buf, BYTE_ORDER, b)
+	err := binary.Write(buf, BYTE_ORDER, b)
+	if err != nil {
+		return []byte{}, err
+	}
 	t.stack.Pop()
 	return t.format_encode(BOOL, buf.Bytes())
 }
 
 //PAYLOAD: BINARY ENCODED INT64
-func (t *encodeTransformer) encode_int(i int64) ([]byte, error) {
-	t.stack.Push("int64")
+func (t *encodeTransformer) encode_int(i int) ([]byte, error) {
+	t.stack.Push("int")
 	buf := bytes.NewBuffer([]byte{})
-	binary.Write(buf, BYTE_ORDER, i)
+	err := binary.Write(buf, BYTE_ORDER, int64(i))
+	if err != nil {
+		return []byte{}, err
+	}
 	t.stack.Pop()
 	return t.format_encode(INT, buf.Bytes())
 }
 
-//PAYLOAD: BINARY ENCODED FLOAT64
-func (t *encodeTransformer) encode_float(f float64) ([]byte, error) {
-	t.stack.Push("float64")
+func (t *encodeTransformer) encode_int64(i int64) ([]byte, error) {
+	t.stack.Push("int64")
 	buf := bytes.NewBuffer([]byte{})
-	binary.Write(buf, BYTE_ORDER, f)
+	err := binary.Write(buf, BYTE_ORDER, i)
+	if err != nil {
+		return []byte{}, err
+	}
 	t.stack.Pop()
-	return t.format_encode(FLOAT, buf.Bytes())
+	return t.format_encode(INT64, buf.Bytes())
 }
 
-func (t *encodeTransformer) format_encode(control EncodedType, payload []byte) ([]byte, error) {
+func (t *encodeTransformer) encode_uint(i uint) ([]byte, error) {
+	t.stack.Push("uint")
 	buf := bytes.NewBuffer([]byte{})
-	payloadLen := len(payload)
+	err := binary.Write(buf, BYTE_ORDER, uint64(i))
+	if err != nil {
+		return []byte{}, err
+	}
+	t.stack.Pop()
+	return t.format_encode(UINT, buf.Bytes())
+}
+
+func (t *encodeTransformer) encode_uint64(i uint64) ([]byte, error) {
+	t.stack.Push("uint64")
+	buf := bytes.NewBuffer([]byte{})
+	err := binary.Write(buf, BYTE_ORDER, i)
+	if err != nil {
+		return []byte{}, err
+	}
+	t.stack.Pop()
+	return t.format_encode(UINT64, buf.Bytes())
+}
+
+func (t *encodeTransformer) encode_uint8(i uint8) ([]byte, error) {
+	t.stack.Push("uint8")
+	buf := bytes.NewBuffer([]byte{})
+	err := binary.Write(buf, BYTE_ORDER, i)
+	if err != nil {
+		return []byte{}, err
+	}
+	t.stack.Pop()
+	return t.format_encode(UINT8, buf.Bytes())
+}
+
+//PAYLOAD: BINARY ENCODED FLOAT64
+func (t *encodeTransformer) encode_float64(f float64) ([]byte, error) {
+	t.stack.Push("float64")
+	buf := bytes.NewBuffer([]byte{})
+	err := binary.Write(buf, BYTE_ORDER, f)
+	if err != nil {
+		return []byte{}, err
+	}
+	t.stack.Pop()
+	return t.format_encode(FLOAT64, buf.Bytes())
+}
+
+func (t *encodeTransformer) format_encode(objectType EncodedType, payload []byte) ([]byte, error) {
+	buf := bytes.NewBuffer([]byte{})
+	payloadLen := uint64(len(payload))
 	if payloadLen+1 > MAX_PAYLOAD_LEN {
 		return []byte{}, fmt.Errorf("payload too big")
 	}
-
-	binary.Write(buf, BYTE_ORDER, uint64(payloadLen))
+	lenLen := (bits.Len64(payloadLen) / 8) + 1
+	if lenLen > 3 {
+		return []byte{}, fmt.Errorf("payload len does not fit in control byte")
+	}
+	controlByte := (byte(objectType) << 3) | byte(lenLen)
+	buf.WriteByte(controlByte)
+	tmpBuf := bytes.NewBuffer([]byte{})
+	payloadLenShifted := uint64(payloadLen << (64 - (lenLen * 8)))
+	binary.Write(tmpBuf, BYTE_ORDER, payloadLenShifted)
+	for i := 0; i < lenLen; i++ {
+		buf.WriteByte(tmpBuf.Bytes()[i])
+	}
 	buf.Write(payload)
-
-	s := buf.Bytes()
-	s[0] = byte(control)
-	return s, nil
+	return buf.Bytes(), nil
 }

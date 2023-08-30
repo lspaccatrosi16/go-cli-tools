@@ -43,7 +43,7 @@ func (a *assigner[T]) assign(decoded *reflect.Value) (*T, error) {
 
 func scalars() *set.Set[reflect.Kind] {
 	sc := set.NewSet[reflect.Kind]()
-	sc.Add(reflect.String, reflect.Bool, reflect.Int, reflect.Int64, reflect.Float64)
+	sc.Add(reflect.String, reflect.Bool, reflect.Int, reflect.Int64, reflect.Float64, reflect.Uint, reflect.Uint64, reflect.Uint8)
 	return sc
 }
 
@@ -163,7 +163,13 @@ func (a *assigner[T]) visit_ptr(ref reflect.Type, decoded *reflect.Value) (*refl
 	if err != nil {
 		return nil, err
 	}
-	ptr := visited.Addr()
+	var ptr reflect.Value
+	if visited.CanAddr() {
+		ptr = visited.Addr()
+	} else {
+		ptr = reflect.New(visited.Type())
+		ptr.Elem().Set(*visited)
+	}
 	a.stack.Pop()
 	return &ptr, nil
 }

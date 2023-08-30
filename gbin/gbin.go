@@ -8,6 +8,7 @@ import (
 	"runtime"
 
 	"github.com/lspaccatrosi16/go-cli-tools/pkgError"
+	"github.com/lspaccatrosi16/go-cli-tools/stack"
 )
 
 var wrapEncode = pkgError.WrapErrorFactory("gbin/encode")
@@ -45,16 +46,18 @@ func (e *Encoder[T]) Encode(data *T) ([]byte, error) {
 }
 
 func (e *Encoder[T]) EncodeStream(data *T) (io.Reader, error) {
+	panicked := true
 	tf := newEncodeTransformer()
 	defer func() {
-		err := recover()
-		fmt.Println("TRACE:")
-		fmt.Println(tf.trace())
-		panic(err)
+		if panicked {
+			fmt.Println("ENCODE TRACE:")
+			fmt.Println(tf.trace())
+		}
 	}()
 	value := reflect.ValueOf(*data)
 	encoded, err := tf.encode(value)
 	buf := bytes.NewBuffer(encoded)
+	panicked = false
 	return buf, wrapEncode(addStack(err, tf.trace()))
 }
 
@@ -78,14 +81,16 @@ func (d *Decoder[T]) Decode(data []byte) (*T, error) {
 }
 
 func (d *Decoder[T]) DecodeStream(data io.Reader) (*T, error) {
+	panicked := true
 	buf := bytes.NewBuffer([]byte{})
 	io.Copy(buf, data)
-	tf := newDecodeTransformer(*buf)
+	emptyStack := stack.NewStack[string]()
+	tf := newDecodeTransformer(*buf, emptyStack)
 	defer func() {
-		err := recover()
-		fmt.Println("TRACE:")
-		fmt.Println(tf.trace())
-		panic(err)
+		if panicked {
+			fmt.Println("DECODE TRACE:")
+			fmt.Println(tf.trace())
+		}
 	}()
 	val, err := tf.decode()
 	if err != nil {
@@ -96,5 +101,6 @@ func (d *Decoder[T]) DecodeStream(data io.Reader) (*T, error) {
 	if err != nil {
 		return nil, wrapDecode(addStack(err, tf.trace()))
 	}
+	panicked = false
 	return checked, nil
 }

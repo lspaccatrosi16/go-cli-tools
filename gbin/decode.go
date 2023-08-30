@@ -11,12 +11,13 @@ import (
 
 type decodeTransformer struct {
 	data  *bytes.Buffer
-	stack stack.Stack[string]
+	stack *stack.Stack[string]
 }
 
-func newDecodeTransformer(buf bytes.Buffer) *decodeTransformer {
+func newDecodeTransformer(buf bytes.Buffer, stack *stack.Stack[string]) *decodeTransformer {
 	return &decodeTransformer{
-		data: &buf,
+		data:  &buf,
+		stack: stack,
 	}
 }
 
@@ -36,15 +37,18 @@ func (t *decodeTransformer) trace() string {
 }
 
 func (t *decodeTransformer) decode() (*reflect.Value, error) {
-	if t.data.Len() < 8 {
+	if t.data.Len() < 1 {
 		return nil, fmt.Errorf("no header found")
 	}
 	control, _ := t.data.ReadByte()
-	payloadLenBuff, _ := t.readN(7)
-	payloadLenArr := []byte{0x00}
-	payloadLenArr = append(payloadLenArr, payloadLenBuff.Bytes()...)
+	objectType := control >> 3
+	lenLen := uint64(control & 0b00000111)
+	payloadLenBuff, _ := t.readN(lenLen)
+	payloadLenBuffBytes := payloadLenBuff.Bytes()
+	payloadLenArr := make([]byte, 8-lenLen)
+	payloadLenArr = append(payloadLenArr, payloadLenBuffBytes...)
 	payloadLen := binary.BigEndian.Uint64(payloadLenArr)
-	switch EncodedType(control) {
+	switch EncodedType(objectType) {
 	case INTERFACE:
 		return t.decode_interface(payloadLen)
 	case MAP:
@@ -61,7 +65,15 @@ func (t *decodeTransformer) decode() (*reflect.Value, error) {
 		return t.decode_bool(payloadLen)
 	case INT:
 		return t.decode_int(payloadLen)
-	case FLOAT:
+	case INT64:
+		return t.decode_int64(payloadLen)
+	case UINT:
+		return t.decode_uint(payloadLen)
+	case UINT64:
+		return t.decode_uint64(payloadLen)
+	case UINT8:
+		return t.decode_uint8(payloadLen)
+	case FLOAT64:
 		return t.decode_float(payloadLen)
 	default:
 		return nil, fmt.Errorf("encoding error: unknown type code 0x%x", control)
@@ -79,7 +91,7 @@ func (t *decodeTransformer) decode_interface(stop uint64) (*reflect.Value, error
 	if err != nil {
 		return nil, err
 	}
-	dec := newDecodeTransformer(*buf)
+	dec := newDecodeTransformer(*buf, t.stack)
 	inner, err := dec.decode()
 	if err != nil {
 		return nil, err
@@ -96,7 +108,7 @@ func (t *decodeTransformer) decode_map(stop uint64) (*reflect.Value, error) {
 	if err != nil {
 		return nil, err
 	}
-	dec := newDecodeTransformer(*buf)
+	dec := newDecodeTransformer(*buf, t.stack)
 	var kType, vType *reflect.Type
 	keyArr := []*reflect.Value{}
 	valArr := []*reflect.Value{}
@@ -151,7 +163,7 @@ func (t *decodeTransformer) decode_struct(stop uint64) (*reflect.Value, error) {
 	}
 	fields := []reflect.StructField{}
 	kvMap := map[string]*reflect.Value{}
-	dec := newDecodeTransformer(*buf)
+	dec := newDecodeTransformer(*buf, t.stack)
 	count := 0
 	for {
 		if dec.data.Len() == 0 {
@@ -195,12 +207,18 @@ func (t *decodeTransformer) decode_ptr(stop uint64) (*reflect.Value, error) {
 	if err != nil {
 		return nil, err
 	}
-	dec := newDecodeTransformer(*buf)
+	dec := newDecodeTransformer(*buf, t.stack)
 	inner, err := dec.decode()
 	if err != nil {
 		return nil, err
 	}
-	outer := inner.Addr()
+	var outer reflect.Value
+	if inner.CanAddr() {
+		outer = inner.Addr()
+	} else {
+		outer = reflect.New(inner.Type())
+		outer.Elem().Set(*inner)
+	}
 	t.stack.Pop()
 	return &outer, nil
 }
@@ -211,7 +229,7 @@ func (t *decodeTransformer) decode_slice(stop uint64) (*reflect.Value, error) {
 	if err != nil {
 		return nil, err
 	}
-	dec := newDecodeTransformer(*buf)
+	dec := newDecodeTransformer(*buf, t.stack)
 	count := 0
 	vals := []*reflect.Value{}
 	var sliceType *reflect.Type
@@ -276,6 +294,23 @@ func (t *decodeTransformer) decode_bool(stop uint64) (*reflect.Value, error) {
 }
 
 func (t *decodeTransformer) decode_int(stop uint64) (*reflect.Value, error) {
+	t.stack.Push("int")
+	buf, err := t.readN(stop)
+	if err != nil {
+		return nil, err
+	}
+	var iVal int64
+	err = binary.Read(buf, BYTE_ORDER, &iVal)
+	if err != nil {
+		return nil, err
+	}
+	val := reflect.New(reflect.TypeOf(int(iVal))).Elem()
+	val.SetInt(iVal)
+	t.stack.Pop()
+	return &val, nil
+}
+
+func (t *decodeTransformer) decode_int64(stop uint64) (*reflect.Value, error) {
 	t.stack.Push("int64")
 	buf, err := t.readN(stop)
 	if err != nil {
@@ -288,6 +323,56 @@ func (t *decodeTransformer) decode_int(stop uint64) (*reflect.Value, error) {
 	}
 	val := reflect.New(reflect.TypeOf(iVal)).Elem()
 	val.SetInt(iVal)
+	t.stack.Pop()
+	return &val, nil
+}
+func (t *decodeTransformer) decode_uint(stop uint64) (*reflect.Value, error) {
+	t.stack.Push("uint")
+	buf, err := t.readN(stop)
+	if err != nil {
+		return nil, err
+	}
+	var uVal uint64
+	err = binary.Read(buf, BYTE_ORDER, &uVal)
+	if err != nil {
+		return nil, err
+	}
+	val := reflect.New(reflect.TypeOf(uint(uVal))).Elem()
+	val.SetUint(uVal)
+	t.stack.Pop()
+	return &val, nil
+}
+
+func (t *decodeTransformer) decode_uint64(stop uint64) (*reflect.Value, error) {
+	t.stack.Push("uint64")
+	buf, err := t.readN(stop)
+	if err != nil {
+		return nil, err
+	}
+	var uVal uint64
+	err = binary.Read(buf, BYTE_ORDER, &uVal)
+	if err != nil {
+		return nil, err
+	}
+	val := reflect.New(reflect.TypeOf(uVal)).Elem()
+	val.SetUint(uVal)
+	t.stack.Pop()
+	return &val, nil
+}
+
+func (t *decodeTransformer) decode_uint8(stop uint64) (*reflect.Value, error) {
+	t.stack.Push("uint8")
+	buf, err := t.readN(stop)
+	if err != nil {
+		return nil, err
+	}
+	var uVal uint8
+	err = binary.Read(buf, BYTE_ORDER, &uVal)
+	if err != nil {
+		return nil, err
+	}
+	val := reflect.New(reflect.TypeOf(uVal)).Elem()
+	val.SetUint(uint64(uVal))
 	t.stack.Pop()
 	return &val, nil
 }

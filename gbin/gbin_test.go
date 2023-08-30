@@ -22,6 +22,34 @@ func TestInt(t *testing.T) {
 	}
 }
 
+func TestInt64(t *testing.T) {
+	data := int64(1234)
+	if pass := runTest(data); !pass {
+		t.Fail()
+	}
+}
+
+func TestUint(t *testing.T) {
+	data := uint(1234)
+	if pass := runTest(data); !pass {
+		t.Fail()
+	}
+}
+
+func TestUint64(t *testing.T) {
+	data := uint64(1234)
+	if pass := runTest(data); !pass {
+		t.Fail()
+	}
+}
+
+func TestUint8(t *testing.T) {
+	data := uint8(122)
+	if pass := runTest(data); !pass {
+		t.Fail()
+	}
+}
+
 func TestFloat(t *testing.T) {
 	data := 1541523.21231
 	if pass := runTest(data); !pass {
@@ -86,6 +114,42 @@ func TestInterface(t *testing.T) {
 	}
 }
 
+func TestSimple(t *testing.T) {
+	testData := map[string]interface{}{
+		"a": (int)(2),
+	}
+	if pass := runTest(testData); !pass {
+		t.Fail()
+	}
+}
+
+func TestComplex(t *testing.T) {
+	a := (int64)(2)
+	complexDataStructure := map[string]interface{}{
+		"a": struct {
+			A string
+			B string
+			C int
+			D int64
+		}{"Foo", "Bar", 60, 70},
+		"b": map[string]int{"1": 1, "2": 2},
+		"c": struct {
+			M *map[string]int
+			I *int64
+		}{
+			M: &map[string]int{
+				"1": 1,
+				"2": 3,
+				"3": 6,
+			},
+			I: &a,
+		},
+	}
+	if pass := runTest(complexDataStructure); !pass {
+		t.Fail()
+	}
+}
+
 func runTest[T any](data T) bool {
 	encoder := gbin.NewEncoder[T]()
 	decoder := gbin.NewDecoder[T]()
@@ -95,7 +159,6 @@ func runTest[T any](data T) bool {
 		fmt.Println(err)
 		return false
 	}
-
 	decoded, err := decoder.Decode(encoded)
 	if err != nil {
 		fmt.Printf("% x\n", encoded)
