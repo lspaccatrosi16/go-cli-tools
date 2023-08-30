@@ -232,7 +232,7 @@ func (t *decodeTransformer) decode_slice(stop uint64) (*reflect.Value, error) {
 	dec := newDecodeTransformer(*buf, t.stack)
 	count := 0
 	vals := []*reflect.Value{}
-	var sliceType *reflect.Type
+	var sliceType reflect.Type
 	for {
 		if dec.data.Len() == 0 {
 			break
@@ -244,21 +244,17 @@ func (t *decodeTransformer) decode_slice(stop uint64) (*reflect.Value, error) {
 		}
 		if sliceType == nil {
 			sT := val.Type()
-			sliceType = &sT
+			sliceType = sT
 		} else {
-			if val.Kind() != (*sliceType).Kind() {
-				return nil, fmt.Errorf("slice key types must be consistent (found %s but expected %s)", val.Kind(), (*sliceType).Kind())
+			if val.Kind() != (sliceType).Kind() {
+				return nil, fmt.Errorf("slice key types must be consistent (found %s but expected %s)", val.Kind(), (sliceType).Kind())
 			}
 		}
 		t.stack.Pop()
 		vals = append(vals, val)
 		count++
 	}
-	if sliceType != nil {
-		any := reflect.TypeOf((any)(0))
-		sliceType = &any
-	}
-	slice := reflect.New(reflect.SliceOf(*sliceType)).Elem()
+	slice := reflect.New(reflect.SliceOf(sliceType)).Elem()
 	for _, val := range vals {
 		slice = reflect.Append(slice, *val)
 	}
