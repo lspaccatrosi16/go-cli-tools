@@ -4,6 +4,10 @@ type Stack[T any] struct {
 	stack []T
 }
 
+func NewStack[T any]() *Stack[T] {
+	return &Stack[T]{}
+}
+
 func (s *Stack[T]) Pop() (val T, ok bool) {
 	if len(s.stack) == 0 {
 		return *new(T), false
