@@ -254,6 +254,10 @@ func (t *decodeTransformer) decode_slice(stop uint64) (*reflect.Value, error) {
 		vals = append(vals, val)
 		count++
 	}
+	if sliceType != nil {
+		any := reflect.TypeOf((any)(0))
+		sliceType = &any
+	}
 	slice := reflect.New(reflect.SliceOf(*sliceType)).Elem()
 	for _, val := range vals {
 		slice = reflect.Append(slice, *val)
