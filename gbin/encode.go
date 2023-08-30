@@ -173,6 +173,14 @@ func (t *encodeTransformer) encode_slice(value reflect.Value) ([]byte, error) {
 	t.stack.Push(stackEntry)
 	buf := bytes.NewBuffer([]byte{})
 	n := value.Len()
+	if n == 0 {
+		zeroVal := reflect.Zero(st.Elem())
+		encoded, err := t.encode(zeroVal)
+		if err != nil {
+			return []byte{}, err
+		}
+		buf.Write(encoded)
+	}
 	for i := 0; i < n; i++ {
 		elEntry := fmt.Sprintf("el%d", i)
 		t.stack.Push(elEntry)
