@@ -236,7 +236,6 @@ func (t *decodeTransformer) decode_ptr(stop uint64) (*reflect.Value, error) {
 	if inner.Kind() != reflect.Invalid {
 		outer.Elem().Set(*inner)
 	} else {
-		fmt.Printf("zero val %s %v\n", zeroVal.Type(), zeroVal)
 		if zeroVal.CanAddr() {
 			nilVal := reflect.New(zeroVal.Addr().Type()).Elem()
 			outer = nilVal
