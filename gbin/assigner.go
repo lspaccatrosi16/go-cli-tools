@@ -53,10 +53,10 @@ func (a *assigner[T]) visit(ref reflect.Type, decoded *reflect.Value) (*reflect.
 	}
 	var visited *reflect.Value
 	var visitError error
-	if scalars().Contains(ref.Kind()) {
+	if scalars().Contains(decoded.Kind()) {
 		visited, visitError = a.visit_scalar(ref, decoded)
 	} else {
-		switch ref.Kind() {
+		switch decoded.Kind() {
 		case reflect.Interface:
 			visited, visitError = a.visit_interface(ref, decoded)
 		case reflect.Map:
@@ -68,7 +68,7 @@ func (a *assigner[T]) visit(ref reflect.Type, decoded *reflect.Value) (*reflect.
 		case reflect.Slice:
 			visited, visitError = a.visit_slice(ref, decoded)
 		default:
-			return nil, fmt.Errorf("type: %s is not currently supported for serialization", ref.Kind())
+			return nil, fmt.Errorf("type: %s is not currently supported for serialization", decoded.Kind())
 		}
 	}
 	if visitError != nil {
@@ -79,9 +79,15 @@ func (a *assigner[T]) visit(ref reflect.Type, decoded *reflect.Value) (*reflect.
 	return visited, nil
 }
 
+func (a *assigner[T]) visit_nil(ref reflect.Type, decoded *reflect.Value) (*reflect.Value, error) {
+	val := reflect.New(ref).Elem()
+	fmt.Printf("new value created %s %v\n", val.Kind(), val.Interface())
+	return &val, nil
+}
+
 func (a *assigner[T]) visit_interface(ref reflect.Type, decoded *reflect.Value) (*reflect.Value, error) {
-	decInner := decoded.Elem()
 	a.stack.Push("interface")
+	decInner := decoded.Elem()
 	visited, err := a.visit(decInner.Type(), &decInner)
 	if err != nil {
 		return nil, err
@@ -159,25 +165,33 @@ func (a *assigner[T]) visit_ptr(ref reflect.Type, decoded *reflect.Value) (*refl
 	a.stack.Push("ptr")
 	refPointedAt := ref.Elem()
 	decPointedAt := decoded.Elem()
-	visited, err := a.visit(refPointedAt, &decPointedAt)
-	if err != nil {
-		return nil, err
-	}
-	var ptr reflect.Value
-	if visited.CanAddr() {
-		ptr = visited.Addr()
+	if decPointedAt.Kind() == reflect.Invalid {
+		targetVal := reflect.New(ref).Elem().Interface()
+		targetReflect := reflect.ValueOf(targetVal)
+		return &targetReflect, nil
 	} else {
-		ptr = reflect.New(visited.Type())
-		ptr.Elem().Set(*visited)
+		visited, err := a.visit(refPointedAt, &decPointedAt)
+		if err != nil {
+			return nil, err
+		}
+		// fmt.Printf("got inner value %s %v\n", visited.Kind(), visited.Interface())
+		var ptr reflect.Value
+		if visited.CanAddr() {
+			ptr = visited.Addr()
+		} else {
+			ptr = reflect.New(visited.Type())
+			ptr.Elem().Set(*visited)
+		}
+		a.stack.Pop()
+		// fmt.Printf("visit ptr %s %v %s %v\n", ptr.Kind(), ptr.Interface(), decoded.Kind(), decoded.Interface())
+		return &ptr, nil
 	}
-	a.stack.Pop()
-	return &ptr, nil
 }
 
 func (a *assigner[T]) visit_slice(ref reflect.Type, decoded *reflect.Value) (*reflect.Value, error) {
 	a.stack.Push(fmt.Sprintf("slice[%s]", decoded.Type().Elem().Kind()))
 	n := decoded.Len()
-	newSlice := reflect.New(ref).Elem()
+	newSlice := reflect.MakeSlice(ref, 0, 0)
 	for i := 0; i < n; i++ {
 		el := decoded.Index(i)
 		a.stack.Push(fmt.Sprintf("el%d", i))
@@ -205,6 +219,9 @@ func (a *assigner[T]) visit_scalar(ref reflect.Type, decoded *reflect.Value) (*r
 }
 
 func (a *assigner[T]) matches(x reflect.Type, y *reflect.Value) bool {
+	if x.Kind() == reflect.Invalid || y.Kind() == reflect.Invalid {
+		return true
+	}
 	if (x.Kind() == reflect.Int || x.Kind() == reflect.Int64) && ((*y).Kind() == reflect.Int || (*y).Kind() == reflect.Int64) {
 		return true
 	}

@@ -61,9 +61,15 @@ func (t *encodeTransformer) encode(v reflect.Value) ([]byte, error) {
 		return t.encode_uint8(uint8(v.Uint()))
 	case reflect.Float64:
 		return t.encode_float64(v.Float())
+	case reflect.Invalid:
+		return t.encode_nil(v)
 	default:
 		return []byte{}, fmt.Errorf("type %s is not currently supported for serialization", v.Kind())
 	}
+}
+
+func (t *encodeTransformer) encode_nil(i reflect.Value) ([]byte, error) {
+	return t.format_encode(INVALID, []byte{})
 }
 
 func (t *encodeTransformer) encode_interface(i reflect.Value) ([]byte, error) {
@@ -81,13 +87,27 @@ func (t *encodeTransformer) encode_interface(i reflect.Value) ([]byte, error) {
 	return t.format_encode(INTERFACE, buf.Bytes())
 }
 
-//PAYLOAD: ENCODED, ENCODED
+//PAYLOAD: KTYPE,VTYPE ENCODED, ENCODED
 func (t *encodeTransformer) encode_map(m reflect.Value) ([]byte, error) {
 	mt := m.Type()
 	stackEntry := fmt.Sprintf("map[%s]%s(%s)", mt.Key().Kind(), mt.Elem().Kind(), mt.Name())
 	t.stack.Push(stackEntry)
 	mi := m.MapRange()
 	buf := bytes.NewBuffer([]byte{})
+	t.stack.Push("zero_key")
+	zeroK, err := t.encode_zero(mt.Key())
+	if err != nil {
+		return []byte{}, err
+	}
+	buf.Write(zeroK)
+	t.stack.Pop()
+	t.stack.Push("zero_val")
+	zeroV, err := t.encode_zero(mt.Elem())
+	if err != nil {
+		return []byte{}, err
+	}
+	buf.Write(zeroV)
+	t.stack.Pop()
 	for {
 		if !mi.Next() {
 			break
@@ -156,6 +176,11 @@ func (t *encodeTransformer) encode_struct(value reflect.Value) ([]byte, error) {
 func (t *encodeTransformer) encode_ptr(value reflect.Value) ([]byte, error) {
 	t.stack.Push("ptr")
 	buf := bytes.NewBuffer([]byte{})
+	zero, err := t.encode_zero(value.Type().Elem())
+	if err != nil {
+		return []byte{}, err
+	}
+	buf.Write(zero)
 	pointedAt := value.Elem()
 	encoded, err := t.encode(pointedAt)
 	if err != nil {
@@ -173,14 +198,11 @@ func (t *encodeTransformer) encode_slice(value reflect.Value) ([]byte, error) {
 	t.stack.Push(stackEntry)
 	buf := bytes.NewBuffer([]byte{})
 	n := value.Len()
-	if n == 0 {
-		zeroVal := reflect.Zero(st.Elem())
-		encoded, err := t.encode(zeroVal)
-		if err != nil {
-			return []byte{}, err
-		}
-		buf.Write(encoded)
+	zero, err := t.encode_zero(st.Elem())
+	if err != nil {
+		return []byte{}, err
 	}
+	buf.Write(zero)
 	for i := 0; i < n; i++ {
 		elEntry := fmt.Sprintf("el%d", i)
 		t.stack.Push(elEntry)
@@ -307,4 +329,13 @@ func (t *encodeTransformer) format_encode(objectType EncodedType, payload []byte
 	}
 	buf.Write(payload)
 	return buf.Bytes(), nil
+}
+
+func (t *encodeTransformer) encode_zero(zt reflect.Type) ([]byte, error) {
+	zero := reflect.Zero(zt)
+	return t.encode(zero)
+}
+
+func illegal_type(t reflect.Type) ([]byte, error) {
+	return []byte{}, fmt.Errorf("illegal type %s", t.Kind())
 }

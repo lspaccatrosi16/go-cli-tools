@@ -150,6 +150,30 @@ func TestComplex(t *testing.T) {
 	}
 }
 
+func TestEmptySlice(t *testing.T) {
+	data := struct {
+		A string
+		B []string
+	}{"AAA", []string{}}
+	if pass := runTest(data); !pass {
+		t.Fail()
+	}
+}
+
+func TestEmptyMap(t *testing.T) {
+	data := map[string]int{}
+	if pass := runTest(data); !pass {
+		t.Fail()
+	}
+}
+
+func TestNil(t *testing.T) {
+	data := (*int)(nil)
+	if pass := runTest(data); !pass {
+		t.Fail()
+	}
+}
+
 func runTest[T any](data T) bool {
 	encoder := gbin.NewEncoder[T]()
 	decoder := gbin.NewDecoder[T]()

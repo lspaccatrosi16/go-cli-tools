@@ -32,7 +32,6 @@ func (t *decodeTransformer) trace() string {
 		formatted := fmt.Sprintf("%s/", val)
 		buf.WriteString(formatted)
 	}
-
 	return buf.String()
 }
 
@@ -75,6 +74,8 @@ func (t *decodeTransformer) decode() (*reflect.Value, error) {
 		return t.decode_uint8(payloadLen)
 	case FLOAT64:
 		return t.decode_float(payloadLen)
+	case INVALID:
+		return t.decode_nil(payloadLen)
 	default:
 		return nil, fmt.Errorf("encoding error: unknown type code 0x%x", control)
 	}
@@ -96,9 +97,14 @@ func (t *decodeTransformer) decode_interface(stop uint64) (*reflect.Value, error
 	if err != nil {
 		return nil, err
 	}
-	outer := inner.Convert(reflect.TypeOf(iface()).Elem())
+	interfaceType := reflect.TypeOf(iface()).Elem()
+	outer := *inner
+	if inner.Kind() != reflect.Invalid {
+		outer = inner.Convert(interfaceType)
+	} else {
+		outer = reflect.New(interfaceType).Elem()
+	}
 	t.stack.Pop()
-
 	return &outer, nil
 }
 
@@ -109,7 +115,18 @@ func (t *decodeTransformer) decode_map(stop uint64) (*reflect.Value, error) {
 		return nil, err
 	}
 	dec := newDecodeTransformer(*buf, t.stack)
-	var kType, vType *reflect.Type
+	zeroKey, err := dec.decode()
+	if err != nil {
+		return nil, err
+	}
+	zeroVal, err := dec.decode()
+	if err != nil {
+		return nil, err
+	}
+	kType := zeroKey.Type()
+	vType := zeroVal.Type()
+	kKind := kType.Kind()
+	vKind := vType.Kind()
 	keyArr := []*reflect.Value{}
 	valArr := []*reflect.Value{}
 	count := 0
@@ -129,23 +146,22 @@ func (t *decodeTransformer) decode_map(stop uint64) (*reflect.Value, error) {
 			return nil, err
 		}
 		t.stack.Pop()
-		if kType == nil && vType == nil {
-			kT := k.Type()
-			kType = &kT
-			vT := v.Type()
-			vType = &vT
-		} else {
-			if k.Kind() != (*kType).Kind() {
-				return nil, fmt.Errorf("map key types must be consistent (found %s but expected %s)", k.Kind(), (*kType).Kind())
-			} else if v.Kind() != (*vType).Kind() {
-				return nil, fmt.Errorf("maps to interfaces are not supported")
-			}
+
+		if k.Kind() != kKind {
+			return nil, fmt.Errorf("map key types must be consistent (found %s but expected %s)", k.Kind(), kKind)
+		} else if v.Kind() != vKind {
+			return nil, fmt.Errorf("maps to interfaces are not supported")
 		}
+
 		keyArr = append(keyArr, k)
 		valArr = append(valArr, v)
 		count++
 	}
-	mapType := reflect.MapOf(*kType, *vType)
+	kType, fk := kindComparableType[kKind]
+	if !fk {
+		return nil, fmt.Errorf("found illegal key type for map: %s", kKind)
+	}
+	mapType := reflect.MapOf(kType, vType)
 	m := reflect.MakeMap(mapType)
 	for i, k := range keyArr {
 		v := valArr[i]
@@ -208,16 +224,27 @@ func (t *decodeTransformer) decode_ptr(stop uint64) (*reflect.Value, error) {
 		return nil, err
 	}
 	dec := newDecodeTransformer(*buf, t.stack)
+	zeroVal, err := dec.decode()
+	if err != nil {
+		return nil, err
+	}
 	inner, err := dec.decode()
 	if err != nil {
 		return nil, err
 	}
-	var outer reflect.Value
-	if inner.CanAddr() {
-		outer = inner.Addr()
-	} else {
-		outer = reflect.New(inner.Type())
+	outer := reflect.New(zeroVal.Type())
+	if inner.Kind() != reflect.Invalid {
 		outer.Elem().Set(*inner)
+	} else {
+		nilVal := reflect.New(zeroVal.Addr().Type()).Elem()
+		// fmt.Printf("%s %T\n", nilVal.Kind(), nilVal.Interface())
+		// fmt.Printf("%s %T\n", nilVal.Elem().Kind(), nilVal.Elem())
+		outer = nilVal
+		// if !outer.IsNil() {
+		// 	panic("should be nil")
+
+		// }
+		//make sure that its nil not ptr to zero value
 	}
 	t.stack.Pop()
 	return &outer, nil
@@ -230,9 +257,13 @@ func (t *decodeTransformer) decode_slice(stop uint64) (*reflect.Value, error) {
 		return nil, err
 	}
 	dec := newDecodeTransformer(*buf, t.stack)
+	zeroVal, err := dec.decode()
+	if err != nil {
+		return nil, err
+	}
 	count := 0
 	vals := []*reflect.Value{}
-	var sliceType reflect.Type
+	sliceType := zeroVal.Type()
 	for {
 		if dec.data.Len() == 0 {
 			break
@@ -242,13 +273,8 @@ func (t *decodeTransformer) decode_slice(stop uint64) (*reflect.Value, error) {
 		if err != nil {
 			return nil, err
 		}
-		if sliceType == nil {
-			sT := val.Type()
-			sliceType = sT
-		} else {
-			if val.Kind() != (sliceType).Kind() {
-				return nil, fmt.Errorf("slice key types must be consistent (found %s but expected %s)", val.Kind(), (sliceType).Kind())
-			}
+		if val.Kind() != sliceType.Kind() {
+			return nil, fmt.Errorf("slice key types must be consistent (found %s but expected %s)", val.Kind(), sliceType.Kind())
 		}
 		t.stack.Pop()
 		vals = append(vals, val)
@@ -390,6 +416,13 @@ func (t *decodeTransformer) decode_float(stop uint64) (*reflect.Value, error) {
 	}
 	val := reflect.New(reflect.TypeOf(fVal)).Elem()
 	val.SetFloat(fVal)
+	t.stack.Pop()
+	return &val, nil
+}
+
+func (t *decodeTransformer) decode_nil(stop uint64) (*reflect.Value, error) {
+	t.stack.Push("invalid")
+	val := reflect.ValueOf((*interface{})(nil)).Elem()
 	t.stack.Pop()
 	return &val, nil
 }
