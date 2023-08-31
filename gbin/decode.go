@@ -236,15 +236,15 @@ func (t *decodeTransformer) decode_ptr(stop uint64) (*reflect.Value, error) {
 	if inner.Kind() != reflect.Invalid {
 		outer.Elem().Set(*inner)
 	} else {
-		nilVal := reflect.New(zeroVal.Addr().Type()).Elem()
-		// fmt.Printf("%s %T\n", nilVal.Kind(), nilVal.Interface())
-		// fmt.Printf("%s %T\n", nilVal.Elem().Kind(), nilVal.Elem())
-		outer = nilVal
-		// if !outer.IsNil() {
-		// 	panic("should be nil")
-
-		// }
-		//make sure that its nil not ptr to zero value
+		fmt.Printf("zero val %s %v\n", zeroVal.Type(), zeroVal)
+		if zeroVal.CanAddr() {
+			nilVal := reflect.New(zeroVal.Addr().Type()).Elem()
+			outer = nilVal
+		} else {
+			iface := zeroVal.Interface()
+			nilVal := reflect.New(reflect.TypeOf(&iface)).Elem()
+			outer = nilVal
+		}
 	}
 	t.stack.Pop()
 	return &outer, nil
