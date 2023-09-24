@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/lspaccatrosi16/go-cli-tools/pkgError"
 	"github.com/manifoldco/promptui"
@@ -16,7 +17,7 @@ var wrap = pkgError.WrapErrorFactory("input")
 
 func getInputTemplate() *promptui.SelectTemplates {
 	return &promptui.SelectTemplates{
-		Active:   "{{ .Name | cyan }}",
+		Active:   "{{ .Name | green }}",
 		Inactive: "{{ .Name }}",
 		Selected: "{{ .Name }}",
 	}
@@ -34,6 +35,29 @@ func makeSelector(label string, items []SelectOption) promptui.Select {
 	return prompt
 }
 
+func makeSearchableSelector(label string, items []SelectOption) promptui.Select {
+	template := getInputTemplate()
+
+	searcher := func(input string, index int) bool {
+		item := items[index]
+		inputted := strings.ToLower(input)
+		name := strings.ToLower(item.Name)
+		return strings.Contains(name, inputted)
+	}
+
+	prompt := promptui.Select{
+		Label:     label,
+		Items:     items,
+		Templates: template,
+		Size:      4,
+		Searcher:  searcher,
+		IsVimMode: false,
+	}
+
+	return prompt
+
+}
+
 func GetSelection(label string, items []SelectOption) (string, error) {
 	v, _, err := GetSelectionIdx(label, items)
 
@@ -46,6 +70,28 @@ func GetSelection(label string, items []SelectOption) (string, error) {
 
 func GetSelectionIdx(label string, items []SelectOption) (string, int, error) {
 	prompt := makeSelector(label, items)
+
+	i, _, err := prompt.Run()
+
+	if err != nil {
+		return "", -1, wrap(err)
+	}
+
+	return items[i].Value, i, nil
+}
+
+func GetSearchableSelection(label string, items []SelectOption) (string, error) {
+	v, _, err := GetSearchableSelectionIdx(label, items)
+
+	if err != nil {
+		return "", wrap(err)
+	}
+
+	return v, nil
+}
+
+func GetSearchableSelectionIdx(label string, items []SelectOption) (string, int, error) {
+	prompt := makeSearchableSelector(label, items)
 
 	i, _, err := prompt.Run()
 
