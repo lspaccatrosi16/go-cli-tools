@@ -76,7 +76,7 @@ func (m *manager) Run(str string) {
 	m.Help()
 }
 
-func (m *manager) Tui() {
+func (m *manager) Tui() bool {
 	options := []input.SelectOption{}
 	for _, cmd := range m.cmds {
 		options = append(options, input.SelectOption{Name: fmt.Sprintf("%s: %s", cmd.Name, cmd.Description), Value: cmd.Name})
@@ -98,10 +98,11 @@ func (m *manager) Tui() {
 	}
 
 	if selected == "exit" {
-		return
+		return true
 	}
 
 	m.Run(selected)
+	return false
 }
 
 func NewManager(config ManagerConfig) manager {
