@@ -78,8 +78,25 @@ func (m *manager) Run(str string) {
 
 func (m *manager) Tui() bool {
 	options := []input.SelectOption{}
+
+	maxCmdLen := 0
+
+	names := []string{}
+	descriptions := []string{}
+
 	for _, cmd := range m.cmds {
-		options = append(options, input.SelectOption{Name: fmt.Sprintf("%s: %s", cmd.Name, cmd.Description), Value: cmd.Name})
+		if len(cmd.Name) > maxCmdLen {
+			maxCmdLen = len(cmd.Name)
+		}
+		names = append(names, cmd.Name)
+		descriptions = append(descriptions, cmd.Description)
+	}
+
+	for i := 0; i < len(names); i++ {
+		name := names[i]
+		description := descriptions[i]
+		options = append(options, input.SelectOption{Name: fmt.Sprintf("%-*s: %s", maxCmdLen+2, name, description), Value: name})
+
 	}
 
 	options = append(options, input.SelectOption{Name: "Back", Value: "exit"})
