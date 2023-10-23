@@ -14,10 +14,23 @@ type cmd struct {
 }
 
 func (c *cmd) Run() error {
-	if c == nil {
+	if c.Exec == nil {
 		panic("exec property of command must not be nil")
 	}
 	return (*c.Exec)()
+}
+
+type datacmd struct {
+	Name        string
+	Description string
+	Exec        *func() (any, error)
+}
+
+func (d *datacmd) Run() (any, error) {
+	if d.Exec == nil {
+		panic("exec property of datacommand must not be nil")
+	}
+	return (*d.Exec)()
 }
 
 type ManagerConfig struct {
@@ -25,8 +38,9 @@ type ManagerConfig struct {
 }
 
 type manager struct {
-	cmds   []*cmd
-	config ManagerConfig
+	cmds     []*cmd
+	datacmds []*datacmd
+	config   ManagerConfig
 }
 
 func (m *manager) Help() {
@@ -61,6 +75,15 @@ func (m *manager) Register(name string, description string, exec func() error) {
 	m.cmds = append(m.cmds, &newcmd)
 }
 
+func (m *manager) RegisterData(name string, description string, exec func() (any, error)) {
+	newcmd := datacmd{
+		Name:        name,
+		Description: description,
+		Exec:        &exec,
+	}
+	m.datacmds = append(m.datacmds, &newcmd)
+}
+
 func (m *manager) Run(str string) {
 	for _, cmd := range m.cmds {
 		if cmd.Name == str {
@@ -76,11 +99,51 @@ func (m *manager) Run(str string) {
 	m.Help()
 }
 
-func (m *manager) Tui() bool {
-	options := []input.SelectOption{}
+func (m *manager) RunData(str string) (any, error) {
+	for _, cmd := range m.datacmds {
+		if cmd.Name == str {
+			data, err := cmd.Run()
+			if err != nil {
+				fmt.Println("an error was encountered whilst running the datacommand:\n", err.Error())
+				return nil, err
+			} else {
+				return data, nil
+			}
+		}
+	}
 
+	estr := fmt.Sprintf("command \"%s\" was not found", str)
+	fmt.Println(estr)
+
+	m.Help()
+
+	return nil, fmt.Errorf(estr)
+}
+
+func (m *manager) DataTui() (any, error) {
 	maxCmdLen := 0
+	names := []string{}
+	descriptions := []string{}
 
+	for _, cmd := range m.datacmds {
+		if len(cmd.Name) > maxCmdLen {
+			maxCmdLen = len(cmd.Name)
+		}
+		names = append(names, cmd.Name)
+		descriptions = append(descriptions, cmd.Description)
+	}
+
+	selected := m.runTui(names, descriptions, maxCmdLen)
+
+	if selected == "exit" {
+		return nil, fmt.Errorf("no value selected")
+	}
+
+	return m.RunData(selected)
+}
+
+func (m *manager) Tui() bool {
+	maxCmdLen := 0
 	names := []string{}
 	descriptions := []string{}
 
@@ -91,6 +154,19 @@ func (m *manager) Tui() bool {
 		names = append(names, cmd.Name)
 		descriptions = append(descriptions, cmd.Description)
 	}
+
+	selected := m.runTui(names, descriptions, maxCmdLen)
+
+	if selected == "exit" {
+		return true
+	}
+
+	m.Run(selected)
+	return false
+}
+
+func (m *manager) runTui(names []string, descriptions []string, maxCmdLen int) string {
+	options := []input.SelectOption{}
 
 	for i := 0; i < len(names); i++ {
 		name := names[i]
@@ -114,12 +190,7 @@ func (m *manager) Tui() bool {
 		panic(err)
 	}
 
-	if selected == "exit" {
-		return true
-	}
-
-	m.Run(selected)
-	return false
+	return selected
 }
 
 func NewManager(config ManagerConfig) manager {
