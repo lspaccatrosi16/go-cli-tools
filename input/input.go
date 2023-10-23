@@ -27,9 +27,10 @@ func makeSelector(label string, items []SelectOption) promptui.Select {
 	template := getInputTemplate()
 
 	prompt := promptui.Select{
-		Label:     label,
-		Templates: template,
-		Items:     items,
+		Label:        label,
+		Templates:    template,
+		Items:        items,
+		HideSelected: true,
 	}
 
 	return prompt
@@ -46,12 +47,12 @@ func makeSearchableSelector(label string, items []SelectOption) promptui.Select 
 	}
 
 	prompt := promptui.Select{
-		Label:     label,
-		Items:     items,
-		Templates: template,
-		Size:      4,
-		Searcher:  searcher,
-		IsVimMode: false,
+		Label:        label,
+		Items:        items,
+		Templates:    template,
+		Searcher:     searcher,
+		IsVimMode:    false,
+		HideSelected: true,
 	}
 
 	return prompt
