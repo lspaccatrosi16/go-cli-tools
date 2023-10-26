@@ -60,7 +60,7 @@ func (m *manager) Help() {
 		cmd := cmds[i]
 		desc := descriptions[i]
 
-		fmt.Fprintf(buf, "%-*s: %s\n", maxCmdLength+2, cmd, desc)
+		fmt.Fprintf(buf, "%-*s : %s\n", maxCmdLength, cmd, desc)
 	}
 
 	fmt.Println(buf.String())
@@ -168,14 +168,14 @@ func (m *manager) Tui() bool {
 func (m *manager) runTui(names []string, descriptions []string, maxCmdLen int) string {
 	options := []input.SelectOption{}
 
+	options = append(options, input.SelectOption{Name: "Back", Value: "exit"})
+
 	for i := 0; i < len(names); i++ {
 		name := names[i]
 		description := descriptions[i]
-		options = append(options, input.SelectOption{Name: fmt.Sprintf("%-*s: %s", maxCmdLen+2, name, description), Value: name})
+		options = append(options, input.SelectOption{Name: fmt.Sprintf("%-*s : %s", maxCmdLen, name, description), Value: name})
 
 	}
-
-	options = append(options, input.SelectOption{Name: "Back", Value: "exit"})
 
 	var selected string
 	var err error
