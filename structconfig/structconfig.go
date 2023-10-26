@@ -101,11 +101,7 @@ func makeList(n *node) func() error {
 	for i := 0; i < len(n.Children); i++ {
 		child := n.Children[i]
 		f := traverseTree(child)
-		ts := child.TypeString
-		if ts == "" {
-			ts = "struct"
-		}
-		manager.Register(child.FieldName, ts, f)
+		manager.Register(child.FieldName, fmt.Sprint(child.Value.Interface()), f)
 	}
 	return func() error {
 		for {
