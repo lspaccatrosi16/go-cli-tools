@@ -37,13 +37,13 @@ type ManagerConfig struct {
 	Searchable bool
 }
 
-type manager struct {
+type Manager struct {
 	cmds     []*cmd
 	datacmds []*datacmd
 	config   ManagerConfig
 }
 
-func (m *manager) Help() {
+func (m *Manager) Help() {
 	maxCmdLength := 0
 	cmds := []string{}
 	descriptions := []string{}
@@ -66,7 +66,7 @@ func (m *manager) Help() {
 	fmt.Println(buf.String())
 }
 
-func (m *manager) Register(name string, description string, exec func() error) {
+func (m *Manager) Register(name string, description string, exec func() error) {
 	newcmd := cmd{
 		Name:        name,
 		Description: description,
@@ -75,7 +75,7 @@ func (m *manager) Register(name string, description string, exec func() error) {
 	m.cmds = append(m.cmds, &newcmd)
 }
 
-func (m *manager) RegisterData(name string, description string, exec func() (any, error)) {
+func (m *Manager) RegisterData(name string, description string, exec func() (any, error)) {
 	newcmd := datacmd{
 		Name:        name,
 		Description: description,
@@ -84,7 +84,7 @@ func (m *manager) RegisterData(name string, description string, exec func() (any
 	m.datacmds = append(m.datacmds, &newcmd)
 }
 
-func (m *manager) Run(str string) {
+func (m *Manager) Run(str string) {
 	for _, cmd := range m.cmds {
 		if cmd.Name == str {
 			err := cmd.Run()
@@ -99,7 +99,7 @@ func (m *manager) Run(str string) {
 	m.Help()
 }
 
-func (m *manager) RunData(str string) (any, error) {
+func (m *Manager) RunData(str string) (any, error) {
 	for _, cmd := range m.datacmds {
 		if cmd.Name == str {
 			data, err := cmd.Run()
@@ -120,7 +120,7 @@ func (m *manager) RunData(str string) (any, error) {
 	return nil, fmt.Errorf(estr)
 }
 
-func (m *manager) DataTui() (any, error) {
+func (m *Manager) DataTui() (any, error) {
 	maxCmdLen := 0
 	names := []string{}
 	descriptions := []string{}
@@ -142,7 +142,7 @@ func (m *manager) DataTui() (any, error) {
 	return m.RunData(selected)
 }
 
-func (m *manager) Tui() bool {
+func (m *Manager) Tui() bool {
 	maxCmdLen := 0
 	names := []string{}
 	descriptions := []string{}
@@ -165,7 +165,7 @@ func (m *manager) Tui() bool {
 	return false
 }
 
-func (m *manager) runTui(names []string, descriptions []string, maxCmdLen int) string {
+func (m *Manager) runTui(names []string, descriptions []string, maxCmdLen int) string {
 	options := []input.SelectOption{}
 
 	options = append(options, input.SelectOption{Name: "Back", Value: "exit"})
@@ -193,6 +193,6 @@ func (m *manager) runTui(names []string, descriptions []string, maxCmdLen int) s
 	return selected
 }
 
-func NewManager(config ManagerConfig) manager {
-	return manager{config: config}
+func NewManager(config ManagerConfig) Manager {
+	return Manager{config: config}
 }
