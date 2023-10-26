@@ -61,6 +61,7 @@ type node struct {
 	Value      reflect.Value
 	FieldName  string
 	TypeString string
+	Parent     *node
 }
 
 func (n *node) String() string {
@@ -96,6 +97,22 @@ func traverseTree(n *node) func() error {
 }
 
 func makeList(n *node) func() error {
+	manager := makeManager(n)
+
+	return func() error {
+		for {
+			end := manager.Tui()
+			*manager = *makeManager(n)
+
+			if end {
+				break
+			}
+		}
+		return nil
+	}
+}
+
+func makeManager(n *node) *command.Manager {
 	manager := command.NewManager(command.ManagerConfig{Searchable: true})
 
 	for i := 0; i < len(n.Children); i++ {
@@ -103,15 +120,8 @@ func makeList(n *node) func() error {
 		f := traverseTree(child)
 		manager.Register(child.FieldName, fmt.Sprint(child.Value.Interface()), f)
 	}
-	return func() error {
-		for {
-			end := manager.Tui()
-			if end {
-				break
-			}
-		}
-		return nil
-	}
+
+	return &manager
 }
 
 func updateVal(n *node) func() error {
@@ -156,7 +166,6 @@ func updateVal(n *node) func() error {
 }
 
 func makeTree(v reflect.Value) *node {
-	fmt.Printf("make %s\n", v.Kind())
 	children := []*node{}
 	if v.Kind() == reflect.Pointer {
 		return makeTree(v.Elem())
@@ -167,6 +176,7 @@ func makeTree(v reflect.Value) *node {
 	}
 
 	if v.Kind() == reflect.Struct {
+		parent := node{}
 		numField := v.NumField()
 		for i := 0; i < numField; i++ {
 			f := v.Field(i)
@@ -174,9 +184,13 @@ func makeTree(v reflect.Value) *node {
 			t := v.Type().Field(i)
 			n.FieldName = t.Name
 			n.TypeString = t.Type.Name()
+			n.Parent = &parent
 			children = append(children, n)
 		}
-		return &node{Children: children}
+
+		parent.Children = children
+
+		return &parent
 	}
 	panic(fmt.Errorf("illegal type found: %s", v.Kind()))
 }
