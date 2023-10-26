@@ -17,7 +17,7 @@ type ConfigOutput[T any] struct {
 }
 
 func (c *ConfigOutput[T]) Analyze(s *T) {
-	tree := makeTree(reflect.ValueOf(s))
+	tree := makeTree(reflect.ValueOf(*s))
 	c.tree = tree
 }
 
@@ -149,12 +149,12 @@ func updateVal(n *node) func() error {
 		}
 		return nil
 	}
-
 }
 
 func makeTree(v reflect.Value) *node {
 	fmt.Printf("make %s\n", v.Kind())
 	children := []*node{}
+	v.Elem()
 	if v.Kind() == reflect.Pointer {
 		return makeTree(v.Elem())
 	}
