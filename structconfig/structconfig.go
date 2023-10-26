@@ -160,7 +160,7 @@ func updateVal(n *node) func() error {
 }
 
 func makeTree(v reflect.Value) *node {
-	// fmt.Printf("make %s\n", v.Kind())
+	fmt.Printf("make %s\n", v.Kind())
 	children := []*node{}
 	v.Elem()
 	if v.Kind() == reflect.Pointer {
