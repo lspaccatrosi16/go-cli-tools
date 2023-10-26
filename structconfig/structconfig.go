@@ -11,6 +11,43 @@ import (
 	"github.com/lspaccatrosi16/go-cli-tools/input"
 )
 
+type ConfigOutput[T any] struct {
+	exec *func() error
+	tree *node
+}
+
+func (c *ConfigOutput[T]) Analyze(s *T) {
+	tree := makeTree(reflect.ValueOf(s))
+	c.tree = tree
+}
+
+func (c *ConfigOutput[T]) Traverse() {
+	if c.tree == nil {
+		panic("must analyze before traverse")
+	}
+	exec := traverseTree(c.tree)
+	c.exec = &exec
+}
+
+func (c *ConfigOutput[T]) Execute() error {
+	if c.exec == nil {
+		panic("must traverse before execute")
+	}
+	return (*c.exec)()
+}
+
+func (c *ConfigOutput[T]) Debug() {
+	if c.tree != nil {
+		fmt.Println(c.tree.String())
+	}
+}
+
+func (c *ConfigOutput[T]) Run(s *T) error {
+	c.Analyze(s)
+	c.Traverse()
+	return c.Execute()
+}
+
 type node struct {
 	Children   []*node
 	Value      reflect.Value
@@ -38,14 +75,8 @@ func (n *node) String() string {
 	return buf.String()
 }
 
-func Configure[T any](s *T) func() error {
-	tree := makeTree(reflect.ValueOf(s))
-
-	// fmt.Println(tree.String())
-
-	exec := traverseTree(tree)
-
-	return exec
+func NewConfig[T any]() *ConfigOutput[T] {
+	return &ConfigOutput[T]{}
 }
 
 func traverseTree(n *node) func() error {
