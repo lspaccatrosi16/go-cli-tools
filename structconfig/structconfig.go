@@ -17,7 +17,11 @@ type ConfigOutput[T any] struct {
 }
 
 func (c *ConfigOutput[T]) Analyze(s *T) {
-	tree := makeTree(reflect.ValueOf(*s))
+	if s == nil {
+		panic("input is nil pointer")
+	}
+
+	tree := makeTree(reflect.ValueOf(s))
 	c.tree = tree
 }
 
@@ -43,6 +47,10 @@ func (c *ConfigOutput[T]) Debug() {
 }
 
 func (c *ConfigOutput[T]) Run(s *T) error {
+	if s == nil {
+		panic("input is nil pointer")
+	}
+
 	c.Analyze(s)
 	c.Traverse()
 	return c.Execute()
@@ -152,7 +160,7 @@ func updateVal(n *node) func() error {
 }
 
 func makeTree(v reflect.Value) *node {
-	fmt.Printf("make %s\n", v.Kind())
+	// fmt.Printf("make %s\n", v.Kind())
 	children := []*node{}
 	v.Elem()
 	if v.Kind() == reflect.Pointer {
