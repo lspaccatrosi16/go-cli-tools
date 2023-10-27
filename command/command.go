@@ -3,6 +3,7 @@ package command
 import (
 	"bytes"
 	"fmt"
+	"sort"
 
 	"github.com/lspaccatrosi16/go-cli-tools/input"
 )
@@ -41,6 +42,20 @@ type Manager struct {
 	cmds     []*cmd
 	datacmds []*datacmd
 	config   ManagerConfig
+}
+
+type optList []input.SelectOption
+
+func (o optList) Len() int {
+	return len(o)
+}
+
+func (o optList) Swap(i, j int) {
+	o[i], o[j] = o[j], o[i]
+}
+
+func (o optList) Less(i, j int) bool {
+	return o[i].Name < o[j].Name
 }
 
 func (m *Manager) Help() {
@@ -166,17 +181,17 @@ func (m *Manager) Tui() bool {
 }
 
 func (m *Manager) runTui(names []string, descriptions []string, maxCmdLen int) string {
-	options := []input.SelectOption{}
-
-	options = append(options, input.SelectOption{Name: "Back", Value: "exit"})
+	options := optList{}
 
 	for i := 0; i < len(names); i++ {
 		name := names[i]
 		description := descriptions[i]
 		options = append(options, input.SelectOption{Name: fmt.Sprintf("%-*s : %s", maxCmdLen, name, description), Value: name})
-
 	}
 
+	sort.Sort(options)
+
+	options = append([]input.SelectOption{{Name: "Back", Value: "exit"}}, options...)
 	var selected string
 	var err error
 
