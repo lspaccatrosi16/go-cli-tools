@@ -71,5 +71,7 @@ func StandaloneManager() error {
 	if err != nil {
 		return err
 	}
-	return nil
+
+	err = saveManager(manager)
+	return err
 }
