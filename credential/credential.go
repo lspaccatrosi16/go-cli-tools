@@ -45,6 +45,21 @@ func GetUserAuthFresh(appName string) (Credential, error) {
 	return *cred, nil
 }
 
+func GetDefaultUserAuth(appName string) (Credential, error) {
+	var credential Credential
+	cred, err := getLegacyCredentials(appName)
+
+	if err != nil {
+		return credential, nil
+	}
+
+	if cred.Key == "" || cred.Secret == "" {
+		return credential, fmt.Errorf("credential has empty fields")
+	}
+
+	return *cred, nil
+}
+
 func StandaloneManager() error {
 	manager, err := loadManager()
 
