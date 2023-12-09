@@ -1,7 +1,5 @@
 package algorithm
 
-import "fmt"
-
 type orderfn = func(lastTerm int, backwards bool) int
 
 type Sequence struct {
@@ -85,7 +83,6 @@ func seqSolveOrder(nums ...int) orderfn {
 		bwDiff := firstDiff
 
 		return func(lastTerm int, backwards bool) int {
-			fmt.Printf("enter %d %t\n", lastTerm, backwards)
 			var diff, val int
 			if backwards {
 				diff = diffFn(bwDiff, backwards)
@@ -97,7 +94,6 @@ func seqSolveOrder(nums ...int) orderfn {
 				val = lastTerm + diff
 			}
 
-			fmt.Printf("eval %d, %d, %d %t\n", lastTerm, diff, val, backwards)
 			return val
 		}
 	}
