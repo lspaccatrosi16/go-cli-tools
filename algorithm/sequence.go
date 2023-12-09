@@ -1,20 +1,22 @@
 package algorithm
 
-type orderfn = func(lastTerm int) int
+type orderfn = func(lastTerm int, backwards bool) int
 
 type Sequence struct {
 	evaluated map[int]int
-	f         func(int) int
+	f         func(int, bool) int
 	highestN  int
 	highestV  int
+	lowestN   int
+	lowestV   int
 }
 
-func (s *Sequence) Get(i int) int {
+func (s *Sequence) getForwards(i int) int {
 	if val, has := s.evaluated[i]; has {
 		return val
 	} else {
 		for j := s.highestN; j < i; j++ {
-			val := s.f(s.highestV)
+			val := s.f(s.highestV, false)
 			s.highestV = val
 			s.evaluated[j] = val
 		}
@@ -23,9 +25,31 @@ func (s *Sequence) Get(i int) int {
 	}
 }
 
+func (s *Sequence) getBackwards(i int) int {
+	if val, has := s.evaluated[i]; has {
+		return val
+	} else {
+		for j := s.lowestN; j > i; j-- {
+			val := s.f(s.lowestV, true)
+			s.lowestV = val
+			s.evaluated[j] = val
+		}
+		s.lowestN = i
+		return s.lowestV
+	}
+}
+
+func (s *Sequence) Get(i int) int {
+	if i >= 1 {
+		return s.getForwards(i)
+	} else {
+		return s.getBackwards(i)
+	}
+}
+
 func seqSolveOrder(nums ...int) orderfn {
 	if len(nums) < 2 {
-		return func(int) int {
+		return func(int, bool) int {
 			return 0
 		}
 	}
@@ -42,8 +66,12 @@ func seqSolveOrder(nums ...int) orderfn {
 	}
 
 	if isSame {
-		return func(int) int {
-			return firstTerm
+		return func(_ int, backwards bool) int {
+			if backwards {
+				return -firstTerm
+			} else {
+				return firstTerm
+			}
 		}
 	} else {
 		differences := []int{}
@@ -55,8 +83,8 @@ func seqSolveOrder(nums ...int) orderfn {
 
 		prevDiff := lastDiff
 
-		return func(lastTerm int) int {
-			diff := diffFn(prevDiff)
+		return func(lastTerm int, backwards bool) int {
+			diff := diffFn(prevDiff, backwards)
 
 			prevDiff = diff
 			return lastTerm + diff
@@ -82,6 +110,8 @@ func SolveSequence(nums ...int) *Sequence {
 		evaluated: evalMap,
 		highestN:  lastN,
 		highestV:  lastV,
+		lowestN:   1,
+		lowestV:   nums[0],
 	}
 
 	return seq
