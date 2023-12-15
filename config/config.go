@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/kirsle/configdir"
-	"github.com/lspaccatrosi16/go-cli-tools/pkgError"
+	"github.com/lspaccatrosi16/go-cli-tools/internal/pkgError"
 	"github.com/lspaccatrosi16/go-cli-tools/storage"
 )
 

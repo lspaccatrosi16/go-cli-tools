@@ -1,6 +1,8 @@
 module github.com/lspaccatrosi16/go-cli-tools
 
-go 1.19
+go 1.21
+
+toolchain go1.21.5
 
 require (
 	cloud.google.com/go/storage v1.30.1
@@ -9,6 +11,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.13.26
 	github.com/aws/aws-sdk-go-v2/service/lambda v1.37.0
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.36.0
+	github.com/lspaccatrosi16/go-libs v0.0.1
 	google.golang.org/api v0.128.0
 	google.golang.org/grpc v1.56.1
 )

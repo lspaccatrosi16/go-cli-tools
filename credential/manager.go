@@ -8,8 +8,8 @@ import (
 
 	"github.com/lspaccatrosi16/go-cli-tools/command"
 	"github.com/lspaccatrosi16/go-cli-tools/config"
-	"github.com/lspaccatrosi16/go-cli-tools/gbin"
 	"github.com/lspaccatrosi16/go-cli-tools/input"
+	"github.com/lspaccatrosi16/go-libs/gbin"
 )
 
 type wrappedCredential struct {

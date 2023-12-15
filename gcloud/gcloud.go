@@ -5,7 +5,7 @@ import (
 	_ "embed"
 
 	firebase "firebase.google.com/go/v4"
-	"github.com/lspaccatrosi16/go-cli-tools/pkgError"
+	"github.com/lspaccatrosi16/go-cli-tools/internal/pkgError"
 	"google.golang.org/api/option"
 )
 

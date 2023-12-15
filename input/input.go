@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/lspaccatrosi16/go-cli-tools/pkgError"
+	"github.com/lspaccatrosi16/go-cli-tools/internal/pkgError"
 	"github.com/manifoldco/promptui"
 )
 
