@@ -143,6 +143,8 @@ github.com/kirsle/configdir v0.0.0-20170128060238-e45d2f54772f h1:dKccXx7xA56UNq
 github.com/kirsle/configdir v0.0.0-20170128060238-e45d2f54772f/go.mod h1:4rEELDSfUAlBSyUjPG0JnaNGjf13JySHFeRdD/3dLP0=
 github.com/lspaccatrosi16/go-libs v0.0.1 h1:vBkMDyaj75LmknJS8VpdmaGq559NGoYp4znxA9K7eMs=
 github.com/lspaccatrosi16/go-libs v0.0.1/go.mod h1:lrZCTsA+8TBww9p1VkdwtgDs36wCoS4hW8Ybx2iCKEY=
+github.com/lspaccatrosi16/go-libs v0.2.0 h1:TWhQgK0y6PYVCiRLVf6PF+wHJSleJRyHlkoOmv4ZlZY=
+github.com/lspaccatrosi16/go-libs v0.2.0/go.mod h1:lrZCTsA+8TBww9p1VkdwtgDs36wCoS4hW8Ybx2iCKEY=
 github.com/mandelsoft/filepath v0.0.0-20200909114706-3df73d378d55 h1:mFdiUG86O2iW+iDEpZKXf64efMWO4JvDT+zN3znUGIc=
 github.com/mandelsoft/filepath v0.0.0-20200909114706-3df73d378d55/go.mod h1:n4xEiUD2HNHnn2w5ZKF0qgjDecHVCWAl5DxZ7+pcFU8=
 github.com/mandelsoft/vfs v0.0.0-20230714093241-d557f163aecd h1:bp5Qgw/7gqjGU9jNLCMSCDEGw3r1uIxMju6V+F18GbY=
