@@ -20,7 +20,7 @@ func (a *AuthClient) GetUser(uid string) (*auth.UserRecord, error) {
 	u, err := a.Client.GetUser(app.ctx, uid)
 
 	if err != nil {
-		return nil, err
+		return nil, wrapAuth(err)
 	}
 
 	return u, nil
@@ -58,6 +58,16 @@ func (a *AuthClient) DeleteUser(uid string) error {
 	return nil
 }
 
+func (a *AuthClient) GetUserEmail(email string) (*auth.UserRecord, error) {
+	u, err := a.Client.GetUserByEmail(a.app.ctx, email)
+
+	if err != nil {
+		return nil, wrapAuth(err)
+	}
+
+	return u, nil
+}
+
 func (a *AuthClient) GenerateTemporaryPassword(pLen int) (string, error) {
 	const letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 
@@ -65,7 +75,7 @@ func (a *AuthClient) GenerateTemporaryPassword(pLen int) (string, error) {
 	_, err := rand.Read(bytes)
 
 	if err != nil {
-		return "", err
+		return "", wrapAuth(err)
 	}
 
 	randomString := make([]byte, pLen)
