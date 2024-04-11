@@ -48,6 +48,16 @@ func (a *AuthClient) GetUsers() (UserRecords, error) {
 	return &userList, nil
 }
 
+func (a *AuthClient) DeleteUser(uid string) error {
+	err := a.Client.DeleteUser(a.app.ctx, uid)
+
+	if err != nil {
+		return wrapAuth(err)
+	}
+
+	return nil
+}
+
 func (a *AuthClient) GenerateTemporaryPassword(pLen int) (string, error) {
 	const letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 

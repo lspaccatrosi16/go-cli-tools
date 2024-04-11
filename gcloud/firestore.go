@@ -88,10 +88,6 @@ func (f *FirestoreClient) GetDoc(path string) (*map[string]interface{}, error) {
 	doc, err := docRef.Get(f.app.ctx)
 
 	if err != nil {
-		return nil, wrapFirestore(err)
-	}
-
-	if err != nil {
 		if status.Code(err) == codes.NotFound {
 			err := errorf("document does not exist %s", path)
 			return nil, err
@@ -153,6 +149,31 @@ func (f *FirestoreClient) DeleteDoc(path string) error {
 	}
 
 	return nil
+}
+
+func (f *FirestoreClient) DeleteCol(path string) error {
+	colRef, err := f.parseColPath(path)
+
+	if err != nil {
+		return wrapFirestore(err)
+	}
+
+	docs, err := colRef.Documents(f.app.ctx).GetAll()
+
+	if err != nil {
+		return wrapFirestore(err)
+	}
+
+	for _, doc := range docs {
+		_, err = doc.Ref.Delete(f.app.ctx)
+
+		if err != nil {
+			return wrapFirestore(err)
+		}
+	}
+
+	return nil
+
 }
 
 func NewFirestore() (*FirestoreClient, error) {
