@@ -159,7 +159,7 @@ func GetValidatedInput(label string, validator func(str string) error) string {
 	return result
 }
 
-func GetFileInput(question string) []byte {
+func GetFileInput(question string) ([]byte, error) {
 	var fileContents []byte
 
 	for {
@@ -170,7 +170,7 @@ func GetFileInput(question string) []byte {
 			if os.IsNotExist(err) {
 				continue
 			} else {
-				fmt.Printf("ERROR: %s\n", err.Error())
+				return nil, wrap(err)
 			}
 		} else {
 			fileContents = fc
@@ -178,5 +178,5 @@ func GetFileInput(question string) []byte {
 		}
 	}
 
-	return fileContents
+	return fileContents, nil
 }
