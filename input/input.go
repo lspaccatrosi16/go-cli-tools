@@ -168,6 +168,7 @@ func GetFileInput(question string) ([]byte, error) {
 
 		if err != nil {
 			if os.IsNotExist(err) {
+				fmt.Printf("ERROR: path does not exist\n")
 				continue
 			} else {
 				return nil, wrap(err)
