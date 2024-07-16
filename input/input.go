@@ -158,3 +158,25 @@ func GetValidatedInput(label string, validator func(str string) error) string {
 
 	return result
 }
+
+func GetFileInput(question string) ([]byte, error) {
+	var fileContents []byte
+
+	for {
+		path := GetInput(question)
+		fc, err := os.ReadFile(path)
+
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			} else {
+				return nil, wrap(err)
+			}
+		} else {
+			fileContents = fc
+			break
+		}
+	}
+
+	return fileContents, nil
+}
