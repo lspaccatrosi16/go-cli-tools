@@ -61,7 +61,8 @@ func (b *Bucket) GetFile(key string) ([]byte, error) {
 
 func (b *Bucket) DeleteFile(key string) error {
 	_, err := b.S3Client.DeleteObject(context.TODO(), &s3.DeleteObjectInput{
-		Key: aws.String(key),
+		Bucket: aws.String(b.Bucket),
+		Key:    aws.String(key),
 	})
 
 	if err != nil {
