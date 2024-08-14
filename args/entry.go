@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
+	"slices"
 	"text/tabwriter"
 )
 
@@ -104,7 +105,20 @@ func RegisterEntry(e ListEntry) {
 func usage() string {
 	buf := bytes.NewBuffer(nil)
 	tr := tabwriter.NewWriter(buf, 0, 0, 3, ' ', 0)
+
+	ents := []ListEntry{}
 	for _, v := range entries {
+		ents = append(ents, v)
+	}
+
+	slices.SortFunc(ents, func(a, b ListEntry) int {
+		if a.Name() < b.Name() {
+			return -1
+		}
+		return 1
+	})
+
+	for _, v := range ents {
 		fmt.Fprintf(tr, "%s\t-%s\t%s\t(%s)\n", v.Name(), v.Short(), v.Description(), v.Default())
 	}
 	tr.Flush()
