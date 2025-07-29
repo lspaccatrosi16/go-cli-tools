@@ -98,6 +98,10 @@ var entries = map[string]ListEntry{
 	"v": NewBoolEntry("version", "v", "show version", false),
 }
 
+func UseCustomHelpTrigger() {
+	delete(entries, "h")
+}
+
 func RegisterEntry(e ListEntry) {
 	entries[e.Name()] = e
 }
