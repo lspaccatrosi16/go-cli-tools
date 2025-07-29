@@ -33,15 +33,11 @@ func ParseOpts() error {
 		if h, err := GetFlagValue[bool]("help"); err == nil && h {
 			fmt.Fprintln(writer, Usage())
 			os.Exit(0)
-		} else if err != nil {
-			return err
 		}
 
 		if v, err := GetFlagValue[bool]("version"); err == nil && v {
 			fmt.Fprintln(writer, version)
 			os.Exit(0)
-		} else if err != nil {
-			return err
 		}
 
 		args = rem
