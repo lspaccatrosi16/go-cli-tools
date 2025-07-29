@@ -141,8 +141,6 @@ github.com/jmespath/go-jmespath/internal/testify v1.5.1 h1:shLQSRRSCCPj3f2gpwzGw
 github.com/jmespath/go-jmespath/internal/testify v1.5.1/go.mod h1:L3OGu8Wl2/fWfCI6z80xFu9LTZmf1ZRjMHUOPmWr69U=
 github.com/kirsle/configdir v0.0.0-20170128060238-e45d2f54772f h1:dKccXx7xA56UNqOcFIbuqFjAWPVtP688j5QMgmo6OHU=
 github.com/kirsle/configdir v0.0.0-20170128060238-e45d2f54772f/go.mod h1:4rEELDSfUAlBSyUjPG0JnaNGjf13JySHFeRdD/3dLP0=
-github.com/lspaccatrosi16/go-libs v0.0.1 h1:vBkMDyaj75LmknJS8VpdmaGq559NGoYp4znxA9K7eMs=
-github.com/lspaccatrosi16/go-libs v0.0.1/go.mod h1:lrZCTsA+8TBww9p1VkdwtgDs36wCoS4hW8Ybx2iCKEY=
 github.com/lspaccatrosi16/go-libs v0.2.0 h1:TWhQgK0y6PYVCiRLVf6PF+wHJSleJRyHlkoOmv4ZlZY=
 github.com/lspaccatrosi16/go-libs v0.2.0/go.mod h1:lrZCTsA+8TBww9p1VkdwtgDs36wCoS4hW8Ybx2iCKEY=
 github.com/mandelsoft/filepath v0.0.0-20200909114706-3df73d378d55 h1:mFdiUG86O2iW+iDEpZKXf64efMWO4JvDT+zN3znUGIc=

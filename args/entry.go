@@ -102,7 +102,7 @@ func RegisterEntry(e ListEntry) {
 	entries[e.Name()] = e
 }
 
-func usage() string {
+func Usage() string {
 	buf := bytes.NewBuffer(nil)
 	tr := tabwriter.NewWriter(buf, 0, 0, 3, ' ', 0)
 

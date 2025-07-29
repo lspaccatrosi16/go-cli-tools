@@ -31,7 +31,7 @@ func ParseOpts() error {
 		flag.Parse()
 		rem := flag.Args()
 		if h, err := GetFlagValue[bool]("help"); err == nil && h {
-			fmt.Fprintln(writer, usage())
+			fmt.Fprintln(writer, Usage())
 			os.Exit(0)
 		} else if err != nil {
 			return err
