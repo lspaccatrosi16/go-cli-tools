@@ -39,7 +39,7 @@ func UseCustomUsage(f func()) {
 
 func ParseOpts() error {
 	if !flag.Parsed() {
-		// flag.Usage = func() {}
+		flag.Usage = cust_usage
 		transformEntries()
 		flag.Parse()
 		rem := flag.Args()
