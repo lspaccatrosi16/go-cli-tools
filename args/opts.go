@@ -25,18 +25,31 @@ var SetWriter = func(w *os.File) {
 	writer = w
 }
 
+func Version() {
+	fmt.Fprintln(writer, version)
+}
+
+var cust_usage = func() {
+	fmt.Fprintln(writer, Usage())
+}
+
+func UseCustomUsage(f func()) {
+	cust_usage = f
+}
+
 func ParseOpts() error {
 	if !flag.Parsed() {
+		flag.Usage = func() {}
 		transformEntries()
 		flag.Parse()
 		rem := flag.Args()
 		if h, err := GetFlagValue[bool]("help"); err == nil && h {
-			fmt.Fprintln(writer, Usage())
+			cust_usage()
 			os.Exit(0)
 		}
 
 		if v, err := GetFlagValue[bool]("version"); err == nil && v {
-			fmt.Fprintln(writer, version)
+			Version()
 			os.Exit(0)
 		}
 

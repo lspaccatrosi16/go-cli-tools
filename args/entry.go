@@ -102,6 +102,10 @@ func UseCustomHelpTrigger() {
 	delete(entries, "h")
 }
 
+func UseCustomVersionTrigger() {
+	delete(entries, "v")
+}
+
 func RegisterEntry(e ListEntry) {
 	entries[e.Name()] = e
 }
